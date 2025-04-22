@@ -1,0 +1,337 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 217 91.2% 59.8%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 217 91.2% 59.8%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 217 91.2% 59.8%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 217 91.2% 59.8%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.dark body {
+  background-image: radial-gradient(circle at 50% 50%, rgba(16, 16, 30, 0.7) 0%, rgba(0, 0, 0, 1) 100%);
+  background-attachment: fixed;
+}
+
+body {
+  background-image: radial-gradient(circle at 50% 50%, rgba(240, 240, 250, 0.7) 0%, rgba(255, 255, 255, 1) 100%);
+  background-attachment: fixed;
+}
+
+.web3-card {
+  @apply bg-background/40 backdrop-blur-md border border-border rounded-xl shadow-lg;
+}
+
+.dark .web3-card {
+  box-shadow: 0 0 15px rgba(79, 70, 229, 0.15);
+}
+
+.web3-button {
+  @apply relative overflow-hidden rounded-lg px-5 py-2.5 transition-all duration-300 ease-in-out;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.5);
+}
+
+.web3-button:hover {
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.7);
+  transform: translateY(-2px);
+}
+
+.web3-button:active {
+  transform: translateY(0);
+}
+
+.web3-input {
+  @apply bg-background/50 border border-border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50;
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(79, 70, 229, 0.7);
+}
+
+.glass-effect {
+  @apply bg-background/30 backdrop-blur-md border border-border rounded-xl;
+}
+
+/* Ludo board styling */
+.ludo-board-container {
+  @apply relative bg-white border border-gray-300 rounded-xl shadow-lg;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.ludo-board {
+  display: grid;
+  grid-template-rows: repeat(15, 1fr);
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border: 2px solid #000;
+}
+
+.ludo-row {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  height: 100%;
+}
+
+.ludo-cell {
+  position: relative;
+  border: 1px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ludo-token-home {
+  border: 2px solid #000;
+  background-color: #fff !important;
+}
+
+.ludo-center-home {
+  position: relative;
+}
+
+.ludo-home-text {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ludo-home-triangle {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.ludo-home-triangle-red {
+  clip-path: polygon(0% 100%, 100% 100%, 50% 50%);
+  background-color: #ff0000;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.ludo-home-triangle-green {
+  clip-path: polygon(100% 0%, 100% 100%, 50% 50%);
+  background-color: #00aa00;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.ludo-home-triangle-yellow {
+  clip-path: polygon(0% 0%, 100% 0%, 50% 50%);
+  background-color: #ffcc00;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.ludo-home-triangle-blue {
+  clip-path: polygon(0% 0%, 0% 100%, 50% 50%);
+  background-color: #0066ff;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.ludo-token {
+  width: 70%;
+  height: 70%;
+  border-radius: 50%;
+  border: 1px solid #000;
+  z-index: 10;
+  transition: all 0.3s;
+}
+
+.ludo-token:hover {
+  transform: scale(1.1);
+}
+
+.ludo-token-selected {
+  box-shadow: 0 0 0 3px white, 0 0 0 5px #000;
+}
+
+.ludo-token-red {
+  background-color: #ff0000;
+}
+
+.ludo-token-green {
+  background-color: #00aa00;
+}
+
+.ludo-token-yellow {
+  background-color: #ffcc00;
+}
+
+.ludo-token-blue {
+  background-color: #0066ff;
+}
+
+.ludo-possible-move {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  animation: pulse 1.5s infinite;
+}
+
+.ludo-arrow {
+  width: 80%;
+  height: 80%;
+}
+
+.ludo-safe-cell {
+  position: relative;
+}
+
+.ludo-safe-cell::after {
+  content: "★";
+  position: absolute;
+  font-size: 12px;
+  color: #555;
+  z-index: 1;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.dice {
+  @apply relative w-16 h-16 bg-white rounded-xl border border-black flex items-center justify-center text-2xl font-bold transition-all duration-300;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.dice-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #000;
+}
+
+.dice-dot-center {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.dice-dot-top-left {
+  top: 20%;
+  left: 20%;
+}
+
+.dice-dot-top-right {
+  top: 20%;
+  right: 20%;
+}
+
+.dice-dot-middle-left {
+  top: 50%;
+  left: 20%;
+  transform: translateY(-50%);
+}
+
+.dice-dot-middle-right {
+  top: 50%;
+  right: 20%;
+  transform: translateY(-50%);
+}
+
+.dice-dot-bottom-left {
+  bottom: 20%;
+  left: 20%;
+}
+
+.dice-dot-bottom-right {
+  bottom: 20%;
+  right: 20%;
+}
+
+.dice-rolling {
+  animation: dice-roll 0.5s ease-in-out infinite;
+}
+
+@keyframes dice-roll {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(15deg);
+  }
+  50% {
+    transform: rotate(0deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Color selection styling */
+.color-option {
+  transition: all 0.3s ease;
+}
+
+.color-option:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
