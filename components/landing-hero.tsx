@@ -8,40 +8,30 @@ import type { RootState } from "@/redux/store"
 import { connectWallet, connectWalletSuccess } from "@/redux/features/wallet/walletSlice"
 import { Dice5 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import ConnectButton from "./connect-button"
+import Link from "next/link"
 
 export function LandingHero() {
-  const router = useRouter()
   const dispatch = useDispatch()
-  const { connected, isConnecting, currentUser } = useSelector((state: RootState) => state.wallet)
-  const [isHovering, setIsHovering] = useState(false)
-  const [showUserSelect, setShowUserSelect] = useState(false)
+  
 
-  const handleConnectWallet = async () => {
-    if (connected) {
-      router.push("/dashboard")
-      return
-    }
+  // const handleSelectUser = (user: "user1" | "user2") => {
+  //   dispatch(connectWallet())
 
-    setShowUserSelect(true)
-  }
+  //   // Simulate wallet connection with dummy data
+  //   setTimeout(() => {
+  //     dispatch(
+  //       connectWalletSuccess({
+  //         address: user === "user1" ? "0xUser1...5678" : "0xUser2...9876",
+  //         balance: 10.5,
+  //         user: user,
+  //       }),
+  //     )
 
-  const handleSelectUser = (user: "user1" | "user2") => {
-    dispatch(connectWallet())
-
-    // Simulate wallet connection with dummy data
-    setTimeout(() => {
-      dispatch(
-        connectWalletSuccess({
-          address: user === "user1" ? "0xUser1...5678" : "0xUser2...9876",
-          balance: 10.5,
-          user: user,
-        }),
-      )
-
-      // Navigate to dashboard after successful connection
-      router.push("/dashboard")
-    }, 1000)
-  }
+  //     // Navigate to dashboard after successful connection
+  //     router.push("/dashboard")
+  //   }, 1000)
+  // }
 
   return (
     <section className="w-full py-10 xl:py-10">
@@ -58,7 +48,7 @@ export function LandingHero() {
               </p>
             </div>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
-              {showUserSelect ? (
+              {/* {showUserSelect ? (
                 <Card className="web3-card p-4">
                   <CardContent className="p-0">
                     <h3 className="text-lg font-bold mb-4">Select User</h3>
@@ -89,31 +79,18 @@ export function LandingHero() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : (
-                <>
-                  <Button
-                    className="web3-button"
-                    size="lg"
-                    onClick={handleConnectWallet}
-                    disabled={isConnecting}
-                    onMouseEnter={() => setIsHovering(true)}
-                    onMouseLeave={() => setIsHovering(false)}
-                  >
-                    {connected ? "Go to Dashboard" : "Connect Wallet"}
-                    {isHovering && !connected && !isConnecting && (
-                      <div className="absolute inset-0 -z-10 animate-pulse rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 opacity-75 blur-lg"></div>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={() => router.push("/how-to-play")}
-                    className="border-border hover:bg-background/5"
-                  >
-                    How to Play
-                  </Button>
-                </>
-              )}
+              ) : ( */}
+              <ConnectButton />
+              <Link href="/how-to-play">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-border hover:bg-background/5"
+                >
+                  How to Play
+                </Button>
+              </Link>
+              {/* )} */}
             </div>
           </div>
           <div className="flex items-center justify-center">

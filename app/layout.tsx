@@ -5,6 +5,8 @@ import "./globals.css"
 import { Providers } from "@/redux/provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
+import { Toaster } from "sonner"
+import { CivicAuthProvider } from "@civic/auth-web3/nextjs"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,10 +26,14 @@ export default function RootLayout({
       <body suppressHydrationWarning className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <Providers>
-            <div className="flex min-h-screen flex-col">
-              <Navbar />
-              <main className="flex-1">{children}</main>
-            </div>
+            <CivicAuthProvider>
+              <Toaster />
+              <div className="flex min-h-screen flex-col">
+                <Navbar />
+                <main className="flex-1">{children}</main>
+              </div>
+            </CivicAuthProvider>
+            
           </Providers>
         </ThemeProvider>
       </body>

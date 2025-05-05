@@ -28,13 +28,13 @@ const walletSlice = createSlice({
     },
     connectWalletSuccess: (
       state,
-      action: PayloadAction<{ address: string; balance: number; user: "user1" | "user2" }>,
+      // action: PayloadAction<{ address: string; balance: number; user: "user1" | "user2" }>,
     ) => {
       state.connected = true
-      state.address = action.payload.address
-      state.balance = action.payload.balance
+      // state.address = action.payload.address
+      // state.balance = action.payload.balance
       state.isConnecting = false
-      state.currentUser = action.payload.user
+      // state.currentUser = action.payload.user
     },
     connectWalletFailure: (state, action: PayloadAction<string>) => {
       state.connected = false
