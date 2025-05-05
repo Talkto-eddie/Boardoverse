@@ -7,13 +7,14 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
 import { Toaster } from "sonner"
 import { CivicAuthProvider } from "@civic/auth-web3/nextjs"
+import { AppConstants } from "@/lib/app_constants"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "BoardoVerse - Web3 Ludo Game",
-  description: "Stake tokens and play Ludo to win in this Web3 gaming platform",
-    generator: 'v0.dev'
+  title: AppConstants.APP_NAME,
+  description: AppConstants.APP_DESCRIPTION,
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({

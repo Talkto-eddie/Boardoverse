@@ -3,7 +3,7 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 interface WalletState {
   connected: boolean
   address: string | null
-  balance: number
+  balance: number | null
   isConnecting: boolean
   error: string | null
   currentUser: "user1" | "user2" | null
@@ -12,7 +12,7 @@ interface WalletState {
 const initialState: WalletState = {
   connected: false,
   address: null,
-  balance: 0,
+  balance: null,
   isConnecting: false,
   error: null,
   currentUser: null,
@@ -36,6 +36,15 @@ const walletSlice = createSlice({
       state.isConnecting = false
       // state.currentUser = action.payload.user
     },
+    setWalletAddressAndBalance: (
+      state,
+      action: PayloadAction<{
+        address: string
+        balance: number
+    }>)=>{
+      state.address = action.payload.address
+      state.balance = action.payload.balance
+    },
     connectWalletFailure: (state, action: PayloadAction<string>) => {
       state.connected = false
       state.isConnecting = false
@@ -53,7 +62,7 @@ const walletSlice = createSlice({
   },
 })
 
-export const { connectWallet, connectWalletSuccess, connectWalletFailure, disconnectWallet, updateBalance } =
+export const { connectWallet, connectWalletSuccess, connectWalletFailure, disconnectWallet, updateBalance, setWalletAddressAndBalance } =
   walletSlice.actions
 
 export default walletSlice.reducer

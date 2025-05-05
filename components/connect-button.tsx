@@ -4,7 +4,7 @@ import { RootState } from "@/redux/store"
 import { useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Button } from "./ui/button"
-import { UserButton, useUser } from "@civic/auth-web3/react";
+import { useUser } from "@civic/auth-web3/react";
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { connectWallet, connectWalletSuccess } from "@/redux/features/wallet/walletSlice"
@@ -36,7 +36,7 @@ export default function ConnectButton() {
             toast.success("Signed in successfully");
         }
     }, [user, isConnecting]);
-    
+
     return (
         <Button
             className="web3-button"
