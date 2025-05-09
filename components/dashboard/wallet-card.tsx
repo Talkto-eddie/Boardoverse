@@ -14,13 +14,13 @@ export function WalletCard() {
 
   return (
     <Card className="web3-card flex flex-col items-start justify-between">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 w-full">
         <CardTitle className="text-lg font-medium">Wallet</CardTitle>
         <Wallet className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
-      <CardContent>
-        <div className="grid gap-2">
-          <div className="flex items-center justify-between">
+      <CardContent className="w-full">
+        <div className="grid gap-2 w-full">
+          <div className="flex items-center justify-between w-full">
             <span className="text-sm text-muted-foreground">Address</span>
             {
               address ? (
@@ -43,7 +43,7 @@ export function WalletCard() {
               )
             }
           </div>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             <span className="text-sm text-muted-foreground">Balance</span>
             {
               balance != null ? (

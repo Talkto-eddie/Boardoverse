@@ -48,6 +48,12 @@ export default function CreateGameCard() {
     // Set the game ID in the communication service
     tabCommunication.setGameId(gameId)
 
+    // set game id to solana
+
+    // call backend to create game
+
+    //progress to next page and wait for user to join
+
     // Create the game and broadcast to other tabs
     // dispatch(
     //   createGameAndBroadcast({
