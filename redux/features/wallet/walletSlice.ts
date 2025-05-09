@@ -6,7 +6,7 @@ interface WalletState {
   balance: number | null
   isConnecting: boolean
   error: string | null
-  currentUser: "user1" | "user2" | null
+  currentUser: string | null
 }
 
 const initialState: WalletState = {
@@ -36,14 +36,16 @@ const walletSlice = createSlice({
       state.isConnecting = false
       // state.currentUser = action.payload.user
     },
-    setWalletAddressAndBalance: (
+    setUserDetails: (
       state,
       action: PayloadAction<{
-        address: string
-        balance: number
+        address: string;
+        balance: number;
+        user: string;
     }>)=>{
       state.address = action.payload.address
       state.balance = action.payload.balance
+      state.currentUser = action.payload.user
     },
     connectWalletFailure: (state, action: PayloadAction<string>) => {
       state.connected = false
@@ -62,7 +64,7 @@ const walletSlice = createSlice({
   },
 })
 
-export const { connectWallet, connectWalletSuccess, connectWalletFailure, disconnectWallet, updateBalance, setWalletAddressAndBalance } =
+export const { connectWallet, connectWalletSuccess, connectWalletFailure, disconnectWallet, updateBalance, setUserDetails } =
   walletSlice.actions
 
 export default walletSlice.reducer

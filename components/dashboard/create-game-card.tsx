@@ -4,14 +4,15 @@ import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "@/redux/store"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { GamepadIcon as GameController, Plus, Copy, ArrowRight } from "lucide-react"
 import { createGame, createGameAndBroadcast } from "@/redux/features/game/gameSlice"
 import { tabCommunication } from "@/services/tab-communication"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
-export function CreateGameCard() {
+export default function CreateGameCard() {
   const router = useRouter()
   const dispatch = useDispatch()
   const { isCreatingGame, gameId: existingGameId } = useSelector((state: RootState) => state.game)
@@ -19,6 +20,7 @@ export function CreateGameCard() {
   const [isHovering, setIsHovering] = useState(false)
   const [createdGameId, setCreatedGameId] = useState<string | null>(existingGameId)
   const [gameCreated, setGameCreated] = useState(false)
+  const [stakeAmount, setStakeAmount] = useState("0.1") // Default stake amount
 
   // Check if we already have a game ID
   useEffect(() => {
@@ -29,6 +31,13 @@ export function CreateGameCard() {
   }, [existingGameId, createdGameId])
 
   const handleCreateGame = () => {
+    // Validate stake amount
+    const parsedStake = parseFloat(stakeAmount)
+    if (isNaN(parsedStake) || parsedStake <= 0) {
+      toast.error("Please enter a valid stake amount")
+      return
+    }
+    
     dispatch(createGame())
 
     // Generate a unique game ID that includes the user identifier
@@ -40,28 +49,26 @@ export function CreateGameCard() {
     tabCommunication.setGameId(gameId)
 
     // Create the game and broadcast to other tabs
-    dispatch(
-      createGameAndBroadcast({
-        gameId,
-        player: {
-          id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
-          address: address || "",
-          colors: [],
-          isReady: true,
-          isWinner: false,
-          isCreator: true, // Mark this player as the creator
-        },
-      }),
-    )
+    // dispatch(
+    //   createGameAndBroadcast({
+    //     gameId,
+    //     // stakeAmount: parsedStake, // Include stake amount in game data
+    //     player: {
+    //       id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
+    //       address: address || "",
+    //       colors: [],
+    //       isReady: true,
+    //       isWinner: false,
+    //       isCreator: true, // Mark this player as the creator
+    //     },
+    //   }),
+    // )
   }
 
   const copyGameId = () => {
     if (createdGameId) {
       navigator.clipboard.writeText(createdGameId)
-      toast({
-        title: "Game ID copied!",
-        description: "Share this with another player to join your game.",
-      })
+      toast("Share this with another player to join your game.")
     }
   }
 
@@ -78,11 +85,26 @@ export function CreateGameCard() {
         <GameController className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
       <CardContent>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <label htmlFor="stake-amount" className="block text-sm font-medium text-muted-foreground mb-1">
+            Stake Amount (USDC)
+          </label>
+          <Input
+            id="stake-amount"
+            type="number"
+            placeholder="Enter stake amount"
+            value={stakeAmount}
+            onChange={(e) => setStakeAmount(e.target.value)}
+            min="0.01"
+            step="0.01"
+            className="font-mono w-20"
+          />
+        </div>
         <div className="grid gap-4">
           <div className="rounded-lg border border-border bg-background/5 p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm">Stake Amount</span>
-              <span className="font-mono text-sm">0.1 USDC</span>
+              <span className="font-mono text-sm">{stakeAmount} USDC</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Platform Fee</span>
@@ -90,7 +112,7 @@ export function CreateGameCard() {
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm font-medium">Total</span>
-              <span className="font-mono text-sm font-medium">0.11 USDC</span>
+              <span className="font-mono text-sm font-medium">{(parseFloat(stakeAmount) + 0.01).toFixed(2)} USDC</span>
             </div>
           </div>
 
@@ -118,32 +140,41 @@ export function CreateGameCard() {
             </div>
           )}
 
-          {!gameCreated && (
-            <Button
-              className="web3-button relative w-full"
-              onClick={handleCreateGame}
-              disabled={isCreatingGame}
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-            >
-              {isCreatingGame ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  Creating Game...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create New Game
-                </div>
-              )}
-              {isHovering && !isCreatingGame && (
-                <div className="absolute inset-0 -z-10 animate-pulse rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 opacity-75 blur-lg"></div>
-              )}
-            </Button>
-          )}
         </div>
       </CardContent>
+      <CardFooter>
+        {!gameCreated && (
+          <Button
+            className="web3-button relative w-full"
+            onClick={handleCreateGame}
+            disabled={isCreatingGame || gameCreated}
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+          >
+            {isCreatingGame ? (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                Creating Game...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create New Game
+              </div>
+            )}
+            {isHovering && !isCreatingGame && (
+              <div className="absolute inset-0 -z-10 animate-pulse rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 opacity-75 blur-lg"></div>
+            )}
+          </Button>
+        )}
+        {/* <Button 
+          onClick={handleCreateGame}
+          disabled={gameCreated}
+          className="w-full"
+        >
+          {gameCreated ? "Game Created" : "Create Game"}
+        </Button> */}
+      </CardFooter>
     </Card>
   )
 }
