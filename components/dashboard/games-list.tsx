@@ -200,7 +200,7 @@ export function GamesList() {
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className="text-sm font-medium">0.1 USDC</div>
+                  <div className="text-sm font-medium">0.1 SOL</div>
                   <div className="text-xs text-muted-foreground">Stake</div>
                 </div>
                 <Button
@@ -255,7 +255,7 @@ export function GamesList() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <div className="text-sm font-medium">{game.stake} USDC</div>
+                      <div className="text-sm font-medium">{game.stake} SOL</div>
                       <div className="text-xs text-muted-foreground">Stake</div>
                     </div>
                     <Button

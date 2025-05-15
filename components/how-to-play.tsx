@@ -44,11 +44,11 @@ export function HowToPlay() {
             <ul className="space-y-2 text-left">
               <li className="flex items-center">
                 <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Fixed stake amount (0.1 USDC)</span>
+                <span>Fixed stake amount (0.1 SOL)</span>
               </li>
               <li className="flex items-center">
                 <Check className="mr-2 h-4 w-4 text-green-500" />
-                <span>Small platform fee (0.01 USDC)</span>
+                <span>Small platform fee of 10%</span>
               </li>
             </ul>
           </div>

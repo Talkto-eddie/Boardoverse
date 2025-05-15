@@ -14,6 +14,9 @@ import { toast } from "sonner"
 import useGameSol from "@/hooks/use_game_sol"
 import { PublicKey } from "@solana/web3.js"
 import { error } from "console"
+import useVault from "@/hooks/use_vault"
+import { updateBalance } from "@/redux/features/wallet/walletSlice"
+import { AppConstants } from "@/lib/app_constants"
 
 export default function CreateGameCard() {
   const router = useRouter()
@@ -24,7 +27,17 @@ export default function CreateGameCard() {
   const [createdGameId, setCreatedGameId] = useState<string | null>(existingGameId)
   const [gameCreated, setGameCreated] = useState(false)
   const [stakeAmount, setStakeAmount] = useState("0.1") // Default stake amount
-  const {createGameTrx} = useGameSol();
+  const [totalAmount, setTotalAmount] = useState("0.11") // Default total amount
+  const PLATFORM_FEE_PERCENTAGE = 10; // 10% fee
+  const { createGameTrx } = useVault();
+
+  // Calculate total amount whenever stake amount changes
+  useEffect(() => {
+    const stake = parseFloat(stakeAmount) || 0;
+    const fee = (PLATFORM_FEE_PERCENTAGE / 100) * stake;
+    const total = stake + fee;
+    setTotalAmount(total.toFixed(2));
+  }, [stakeAmount, PLATFORM_FEE_PERCENTAGE]);
 
   // Check if we already have a game ID
   useEffect(() => {
@@ -34,52 +47,64 @@ export default function CreateGameCard() {
     }
   }, [existingGameId, createdGameId])
 
+  // Handle stake amount change
+  const handleStakeAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStakeAmount(e.target.value);
+  };
+
   const handleCreateGame = () => {
     // Validate stake amount
-    const parsedStake = parseFloat(stakeAmount)
+    const parsedStake = parseFloat(totalAmount)
     if (isNaN(parsedStake) || parsedStake <= 0) {
       toast.error("Please enter a valid stake amount")
       return
     }
-    
+
     dispatch(createGame())
 
     // Generate a unique game ID that includes the user identifier
-    const gameId = `game-${Math.random().toString(36).substring(0, 24)}`
+    // let gameId = `game-${Math.random().toString(36).substring(0, 24)}`
 
     // Set the game ID in the communication service
-    tabCommunication.setGameId(gameId)
     // set game id to solana
-    createGameTrx(gameId, parsedStake, new PublicKey(address)).then((result: string) => {
+    createGameTrx(parsedStake, new PublicKey(address)).then((result: string) => {
       toast.success("Game created successfully!")
 
+      const gameId = result.substring(0, 20) // Use the generated game ID from the transaction
+
       // call backend to create game
+      tabCommunication.setGameId(gameId)
       setCreatedGameId(gameId)
       setGameCreated(true)
 
-      //progress to next page and wait for user to join
-
       // Create the game and broadcast to other tabs
-      // dispatch(
-      //   createGameAndBroadcast({
-      //     gameId,
-      //     // stakeAmount: parsedStake, // Include stake amount in game data
-      //     player: {
-      //       id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
-      //       address: address || "",
-      //       colors: [],
-      //       isReady: true,
-      //       isWinner: false,
-      //       isCreator: true, // Mark this player as the creator
-      //     },
-      //   }),
-      // )
-    },(error: any)=>{
+      dispatch(
+        createGameAndBroadcast({
+          gameId,
+          // stakeAmount: parsedStake, // Include stake amount in game data
+          player: {
+            id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
+            address: address || "",
+            colors: [],
+            isReady: true,
+            isWinner: false,
+            isCreator: true, // Mark this player as the creator
+          },
+        })
+      );
+
+
+      // update user balance
+      AppConstants.APP_CONNECTION.getBalance(new PublicKey(address)).then((balance: any) => {
+        // set to redux
+        dispatch(updateBalance(Number(balance)))
+      })
+    }, (error: any) => {
       dispatch(createGameFailure("Error creating game: " + error.message))
       console.error("Error creating game:", error)
     })
 
-    
+
   }
 
   const copyGameId = () => {
@@ -104,14 +129,14 @@ export default function CreateGameCard() {
       <CardContent>
         <div className="mb-4 flex items-center justify-between gap-2">
           <label htmlFor="stake-amount" className="block text-sm font-medium text-muted-foreground mb-1">
-            Stake Amount (USDC)
+            Stake Amount (SOL)
           </label>
           <Input
             id="stake-amount"
             type="number"
             placeholder="Enter stake amount"
             value={stakeAmount}
-            onChange={(e) => setStakeAmount(e.target.value)}
+            onChange={handleStakeAmountChange}
             min="0.01"
             step="0.01"
             className="font-mono w-20"
@@ -121,15 +146,15 @@ export default function CreateGameCard() {
           <div className="rounded-lg border border-border bg-background/5 p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm">Stake Amount</span>
-              <span className="font-mono text-sm">{stakeAmount} USDC</span>
+              <span className="font-mono text-sm">{stakeAmount} SOL</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Platform Fee</span>
-              <span className="font-mono text-sm">0.01 USDC</span>
+              <span className="font-mono text-sm">{PLATFORM_FEE_PERCENTAGE}%</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm font-medium">Total</span>
-              <span className="font-mono text-sm font-medium">{(parseFloat(stakeAmount) + 0.01).toFixed(2)} USDC</span>
+              <span className="font-mono text-sm font-medium">{totalAmount} SOL</span>
             </div>
           </div>
 

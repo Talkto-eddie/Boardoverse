@@ -21,7 +21,7 @@
         
 //         return parseFloat(solBalance.toFixed(4));
 //     } else {
-//         // Fetch SPL token balance for USDC, USDT, SEND, etc.
+//         // Fetch SPL token balance for SOL, USDT, SEND, etc.
 //         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
 //             publicKey,
 //             { mint: new PublicKey(currencyInfo.address) }

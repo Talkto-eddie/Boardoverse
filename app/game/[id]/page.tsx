@@ -85,7 +85,7 @@ export default function GamePage() {
           joinGameAndBroadcast({
             gameId: "computer-game",
             player: {
-              id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
+              id: `player-${currentUser}`,
               address: address || "",
               colors: [],
               isReady: true,
