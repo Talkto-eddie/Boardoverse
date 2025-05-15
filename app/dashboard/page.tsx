@@ -27,11 +27,9 @@ export default function DashboardPage() {
       return;
     }
 
-    console.log("user", user)
     if(address){
       // fetch user balance
       AppConstants.APP_CONNECTION.getBalance(new PublicKey(address)).then((balance) => {
-        console.log("balance", balance)
         // set to redux
         dispatch(setUserDetails({ address: address, balance: balance, user: user?.id!,  }))
       })

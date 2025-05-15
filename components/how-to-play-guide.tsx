@@ -47,7 +47,7 @@ export function HowToPlayGuide() {
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-400">•</span>
-                        <span>Ensure you have at least 0.11 USDC (0.1 for stake + 0.01 fee)</span>
+                        <span>Ensure you have at least 0.11 SOL (0.1 for stake + 0.01 fee)</span>
                       </li>
                     </ul>
                   </div>
@@ -125,15 +125,15 @@ export function HowToPlayGuide() {
                     <ul className="mt-4 space-y-2 text-gray-300">
                       <li className="flex items-start gap-2">
                         <span className="text-blue-400">•</span>
-                        <span>Each player stakes 0.1 USDC to join a game</span>
+                        <span>Each player stakes 0.1  to join a game</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-400">•</span>
-                        <span>Platform fee is 0.01 USDC per player (10%)</span>
+                        <span>Platform fee is 10%</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-400">•</span>
-                        <span>Winner receives 0.18 USDC (90% of the total stake)</span>
+                        <span>Winner receives 0.18 SOL (90% of the total stake)</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-400">•</span>

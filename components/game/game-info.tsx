@@ -4,6 +4,7 @@ import { useSelector } from "react-redux"
 import type { RootState } from "@/redux/store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Trophy } from "lucide-react"
+import formatWalletAddress from "@/lib/utils"
 
 export function GameInfo() {
   const { gameId, status, players, winner, stakeAmount, currentPlayerIndex } = useSelector(
@@ -48,11 +49,11 @@ export function GameInfo() {
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Stake</span>
-              <span className="font-mono text-sm">{stakeAmount} USDC</span>
+              <span className="font-mono text-sm">{stakeAmount} SOL</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Prize Pool</span>
-              <span className="font-mono text-sm">{stakeAmount * 2 * 0.9} USDC</span>
+              <span className="font-mono text-sm">{stakeAmount * 2 * 0.9} SOL</span>
             </div>
             {status === "playing" && (
               <div className="mt-2 flex items-center justify-between">
@@ -69,7 +70,7 @@ export function GameInfo() {
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-lg border border-border bg-background/5 p-3">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">You ({formatPlayerName(address || "")})</span>
+                <span className="text-sm font-medium">You ({formatWalletAddress(address || "")})</span>
               </div>
               <div className="mt-2 text-xs font-mono text-muted-foreground">{address}</div>
               {currentPlayer?.colors && currentPlayer.colors.length > 0 && (
@@ -86,11 +87,11 @@ export function GameInfo() {
             <div className="rounded-lg border border-border bg-background/5 p-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">
-                  {opponent ? formatPlayerName(opponent.address) : "Waiting..."}
+                  {opponent ? formatPlayerName(opponent.address) : "Bot..."}
                 </span>
               </div>
               <div className="mt-2 text-xs font-mono text-muted-foreground">
-                {opponent ? opponent.address : "Waiting for opponent..."}
+                {opponent ? formatWalletAddress(opponent.address) : "Waiting for opponent..."}
               </div>
               {opponent?.colors && opponent.colors.length > 0 && (
                 <div className="mt-2 flex gap-1">
@@ -113,8 +114,8 @@ export function GameInfo() {
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
                 {winnerPlayer.address === address
-                  ? `You won ${stakeAmount * 2 * 0.9} USDC`
-                  : `${formatPlayerName(winnerPlayer.address)} won ${stakeAmount * 2 * 0.9} USDC`}
+                  ? `You won ${stakeAmount * 2 * 0.9} SOL`
+                  : `${formatPlayerName(winnerPlayer.address)} won ${stakeAmount * 2 * 0.9} SOL`}
               </div>
             </div>
           )}

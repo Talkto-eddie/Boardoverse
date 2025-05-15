@@ -59,7 +59,7 @@ export function WalletCard() {
       </CardContent>
       <CardFooter className="w-full">
           <div className="mt-4 w-full">
-            <Link target="_blank" href={"https://solscan.io/tx/"+address+"?cluster=devnet"}>
+          <Link target="_blank" href={"https://solscan.io/account/"+address+"?cluster=devnet"}>
               <button className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background/5 px-3 py-2 text-sm hover:bg-background/10">
                 View on Explorer
                 <ArrowUpRight className="h-4 w-4" />

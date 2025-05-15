@@ -46,7 +46,7 @@ export default function ConnectButton() {
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
-            {connected ? "Go to Dashboard" : "Connect Wallet"}
+            {connected ? "Go to Dashboard" : "Sign in"}
             {isHovering && !connected && !isConnecting && (
                 <div className="absolute inset-0 -z-10 animate-pulse rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 opacity-75 blur-lg"></div>
             )}
