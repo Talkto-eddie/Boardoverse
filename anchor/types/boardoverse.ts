@@ -295,14 +295,6 @@ export type Boardoverse = {
         {
           "name": "amountToStake",
           "type": "u64"
-        },
-        {
-          "name": "player1",
-          "type": "pubkey"
-        },
-        {
-          "name": "player2",
-          "type": "pubkey"
         }
       ]
     }

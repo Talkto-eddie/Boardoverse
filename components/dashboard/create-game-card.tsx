@@ -8,19 +8,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GamepadIcon as GameController, Plus, Copy, ArrowRight } from "lucide-react"
-import { createGame, createGameAndBroadcast } from "@/redux/features/game/gameSlice"
+import { createGame, createGameAndBroadcast, createGameFailure } from "@/redux/features/game/gameSlice"
 import { tabCommunication } from "@/services/tab-communication"
 import { toast } from "sonner"
+import useGameSol from "@/hooks/use_game_sol"
+import { PublicKey } from "@solana/web3.js"
+import { error } from "console"
 
 export default function CreateGameCard() {
   const router = useRouter()
   const dispatch = useDispatch()
-  const { isCreatingGame, gameId: existingGameId } = useSelector((state: RootState) => state.game)
+  const { isCreatingGame, gameId: existingGameId, } = useSelector((state: RootState) => state.game)
   const { address, currentUser } = useSelector((state: RootState) => state.wallet)
   const [isHovering, setIsHovering] = useState(false)
   const [createdGameId, setCreatedGameId] = useState<string | null>(existingGameId)
   const [gameCreated, setGameCreated] = useState(false)
   const [stakeAmount, setStakeAmount] = useState("0.1") // Default stake amount
+  const {createGameTrx} = useGameSol();
 
   // Check if we already have a game ID
   useEffect(() => {
@@ -41,34 +45,41 @@ export default function CreateGameCard() {
     dispatch(createGame())
 
     // Generate a unique game ID that includes the user identifier
-    const gameId = `game-${currentUser}-${Math.random().toString(36).substring(2, 7)}`
-    setCreatedGameId(gameId)
-    setGameCreated(true)
+    const gameId = `game-${Math.random().toString(36).substring(0, 24)}`
 
     // Set the game ID in the communication service
     tabCommunication.setGameId(gameId)
-
     // set game id to solana
+    createGameTrx(gameId, parsedStake, new PublicKey(address)).then((result: string) => {
+      toast.success("Game created successfully!")
 
-    // call backend to create game
+      // call backend to create game
+      setCreatedGameId(gameId)
+      setGameCreated(true)
 
-    //progress to next page and wait for user to join
+      //progress to next page and wait for user to join
 
-    // Create the game and broadcast to other tabs
-    // dispatch(
-    //   createGameAndBroadcast({
-    //     gameId,
-    //     // stakeAmount: parsedStake, // Include stake amount in game data
-    //     player: {
-    //       id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
-    //       address: address || "",
-    //       colors: [],
-    //       isReady: true,
-    //       isWinner: false,
-    //       isCreator: true, // Mark this player as the creator
-    //     },
-    //   }),
-    // )
+      // Create the game and broadcast to other tabs
+      // dispatch(
+      //   createGameAndBroadcast({
+      //     gameId,
+      //     // stakeAmount: parsedStake, // Include stake amount in game data
+      //     player: {
+      //       id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
+      //       address: address || "",
+      //       colors: [],
+      //       isReady: true,
+      //       isWinner: false,
+      //       isCreator: true, // Mark this player as the creator
+      //     },
+      //   }),
+      // )
+    },(error: any)=>{
+      dispatch(createGameFailure("Error creating game: " + error.message))
+      console.error("Error creating game:", error)
+    })
+
+    
   }
 
   const copyGameId = () => {

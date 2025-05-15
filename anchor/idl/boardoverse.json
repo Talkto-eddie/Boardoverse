@@ -289,14 +289,6 @@
         {
           "name": "amount_to_stake",
           "type": "u64"
-        },
-        {
-          "name": "player_1",
-          "type": "pubkey"
-        },
-        {
-          "name": "player_2",
-          "type": "pubkey"
         }
       ]
     }
