@@ -1,35 +1,40 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import type { RootState } from "@/redux/store"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { GamepadIcon as GameController, Plus, Copy, ArrowRight } from "lucide-react"
-import { createGame, createGameAndBroadcast, createGameFailure } from "@/redux/features/game/gameSlice"
-import { tabCommunication } from "@/services/tab-communication"
-import { toast } from "sonner"
-import useGameSol from "@/hooks/use_game_sol"
-import { PublicKey } from "@solana/web3.js"
-import { error } from "console"
-import useVault from "@/hooks/use_vault"
-import { updateBalance } from "@/redux/features/wallet/walletSlice"
-import { AppConstants } from "@/lib/app_constants"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  GamepadIcon as GameController,
+  Plus,
+  Copy,
+  ArrowRight,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { toast } from "sonner";
+import { socketManager } from "@/lib/socket-manager";
+import { useGameStore } from "@/store/gameStore";
+import { useSocketStore } from "@/store/SocketStore";
 
 export default function CreateGameCard() {
-  const router = useRouter()
-  const dispatch = useDispatch()
-  const { isCreatingGame, gameId: existingGameId, } = useSelector((state: RootState) => state.game)
-  const { address, currentUser } = useSelector((state: RootState) => state.wallet)
-  const [isHovering, setIsHovering] = useState(false)
-  const [createdGameId, setCreatedGameId] = useState<string | null>(existingGameId)
-  const [gameCreated, setGameCreated] = useState(false)
-  const [stakeAmount, setStakeAmount] = useState("0.1") // Default stake amount
-  const [totalAmount, setTotalAmount] = useState("0.11") // Default total amount
+  const { isConnected } = useSocketStore();
+  const { gameId, createGame } = useGameStore();
+  const router = useRouter();
+  const [isHovering, setIsHovering] = useState(false);
+  const [createdGameId, setCreatedGameId] = useState<string | null>(gameId);
+  const [gameCreated, setGameCreated] = useState(!!gameId);
+  const [stakeAmount, setStakeAmount] = useState("0.1"); // Default stake amount
+  const [totalAmount, setTotalAmount] = useState("0.11"); // Default total amount
+  const [isCreatingGame, setIsCreatingGame] = useState(false); // Track game creation state
   const PLATFORM_FEE_PERCENTAGE = 10; // 10% fee
-  const { createGameTrx } = useVault();
 
   // Calculate total amount whenever stake amount changes
   useEffect(() => {
@@ -37,98 +42,119 @@ export default function CreateGameCard() {
     const fee = (PLATFORM_FEE_PERCENTAGE / 100) * stake;
     const total = stake + fee;
     setTotalAmount(total.toFixed(2));
-  }, [stakeAmount, PLATFORM_FEE_PERCENTAGE]);
+  }, [stakeAmount]);
 
-  // Check if we already have a game ID
+  // Sync with existing game ID
   useEffect(() => {
-    if (existingGameId && !createdGameId) {
-      setCreatedGameId(existingGameId)
-      setGameCreated(true)
+    if (gameId && !createdGameId) {
+      setCreatedGameId(gameId);
+      setGameCreated(true);
+      console.log("Synced with existing game ID:", gameId);
     }
-  }, [existingGameId, createdGameId])
+  }, [gameId, createdGameId]);
 
   // Handle stake amount change
   const handleStakeAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStakeAmount(e.target.value);
   };
 
-  const handleCreateGame = () => {
-    // Validate stake amount
-    const parsedStake = parseFloat(totalAmount)
+  // Create game handler
+  const handleCreateGame = async () => {
+    const parsedStake = parseFloat(stakeAmount);
     if (isNaN(parsedStake) || parsedStake <= 0) {
-      toast.error("Please enter a valid stake amount")
-      return
+      toast.error("Please enter a valid stake amount");
+      return;
     }
 
-    dispatch(createGame())
+    if (!isConnected) {
+      toast.error("Not connected to server. Attempting to reconnect...");
+      socketManager.connect();
+      return;
+    }
 
-    // Generate a unique game ID that includes the user identifier
-    // let gameId = `game-${Math.random().toString(36).substring(0, 24)}`
+    setIsCreatingGame(true);
 
-    // Set the game ID in the communication service
-    // set game id to solana
-    createGameTrx(parsedStake, new PublicKey(address)).then((result: string) => {
-      toast.success("Game created successfully!")
+    try {
+      console.log('Creating game...');
+      const response = await socketManager.createGame(false);
+      console.log('Game created with ID:', response.gameId);
+      
+      // Update the store - await the async call
+      await createGame(false);
+      
+      // Set the local state
+      setCreatedGameId(response.gameId);
+      setGameCreated(true);
+      
+      console.log('Game state updated, createdGameId:', response.gameId);
+      toast.success("Game created successfully!");
+    } catch (error) {
+      console.error("Error creating game:", error);
+      toast.error("Failed to create game. Please try again.");
+    } finally {
+      setIsCreatingGame(false);
+    }
+  };
 
-      const gameId = result.substring(0, 20) // Use the generated game ID from the transaction
-
-      // call backend to create game
-      tabCommunication.setGameId(gameId)
-      setCreatedGameId(gameId)
-      setGameCreated(true)
-
-      // Create the game and broadcast to other tabs
-      dispatch(
-        createGameAndBroadcast({
-          gameId,
-          // stakeAmount: parsedStake, // Include stake amount in game data
-          player: {
-            id: `player-${currentUser}-${Math.random().toString(36).substring(2, 9)}`,
-            address: address || "",
-            colors: [],
-            isReady: true,
-            isWinner: false,
-            isCreator: true, // Mark this player as the creator
-          },
-        })
-      );
-
-
-      // update user balance
-      AppConstants.APP_CONNECTION.getBalance(new PublicKey(address)).then((balance: any) => {
-        // set to redux
-        dispatch(updateBalance(Number(balance)))
-      })
-    }, (error: any) => {
-      dispatch(createGameFailure("Error creating game: " + error.message))
-      console.error("Error creating game:", error)
-    })
-
-
-  }
-
+  // Copy game ID to clipboard
   const copyGameId = () => {
     if (createdGameId) {
-      navigator.clipboard.writeText(createdGameId)
-      toast("Share this with another player to join your game.")
+      navigator.clipboard.writeText(createdGameId);
+      toast.success("Game ID copied! Share it with another player to join.");
     }
-  }
+  };
 
+  // Navigate to game page
   const goToGame = () => {
+    console.log('Go to game clicked!');
+    console.log('createdGameId:', createdGameId);
+    console.log('gameId from store:', gameId);
+    console.log('Current pathname:', window.location.pathname);
+    
     if (createdGameId) {
-      router.push(`/game/${createdGameId}`)
+      const gameUrl = `/game/${createdGameId}`;
+      console.log('Navigating to:', gameUrl);
+      
+      // Try router first, fallback to window.location
+      try {
+        console.log('Attempting router.push...');
+        router.push(gameUrl);
+        console.log('Router.push completed');
+      } catch (error) {
+        console.log('Router failed, using window.location:', error);
+        window.location.href = gameUrl;
+      }
+    } else {
+      console.error('No game ID available for navigation');
+      console.log('Current state:', { createdGameId, gameId, gameCreated });
     }
-  }
+  };
 
   return (
     <Card className="web3-card">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-medium">Create Game</CardTitle>
+        <div className="flex items-center gap-2">
+          {isConnected ? (
+            <div className="flex items-center gap-1 text-green-500">
+              <Wifi className="h-4 w-4" />
+              <span className="text-xs">Connected</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-red-500">
+              <WifiOff className="h-4 w-4" />
+              <span className="text-xs">Disconnected</span>
+            </div>
+          )}
         <GameController className="h-5 w-5 text-muted-foreground" />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="mb-4 flex items-center justify-between gap-2">
-          <label htmlFor="stake-amount" className="block text-sm font-medium text-muted-foreground mb-1">
+          <label
+            htmlFor="stake-amount"
+            className="block text-sm font-medium text-muted-foreground mb-1"
+          >
             Stake Amount (SOL)
           </label>
           <Input
@@ -150,11 +176,15 @@ export default function CreateGameCard() {
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Platform Fee</span>
-              <span className="font-mono text-sm">{PLATFORM_FEE_PERCENTAGE}%</span>
+              <span className="font-mono text-sm">
+                {PLATFORM_FEE_PERCENTAGE}%
+              </span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm font-medium">Total</span>
-              <span className="font-mono text-sm font-medium">{totalAmount} SOL</span>
+              <span className="font-mono text-sm relations font-medium">
+                {totalAmount} SOL
+              </span>
             </div>
           </div>
 
@@ -162,7 +192,12 @@ export default function CreateGameCard() {
             <div className="rounded-lg border border-green-500 bg-green-500/10 p-3 mb-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Game Created!</span>
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-green-500" onClick={copyGameId}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-green-500"
+                  onClick={copyGameId}
+                >
                   <Copy className="h-3 w-3 mr-1" />
                   Copy ID
                 </Button>
@@ -181,7 +216,6 @@ export default function CreateGameCard() {
               </div>
             </div>
           )}
-
         </div>
       </CardContent>
       <CardFooter>
@@ -189,7 +223,7 @@ export default function CreateGameCard() {
           <Button
             className="web3-button relative w-full"
             onClick={handleCreateGame}
-            disabled={isCreatingGame || gameCreated}
+            disabled={isCreatingGame || gameCreated || !isConnected}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
           >
@@ -198,25 +232,23 @@ export default function CreateGameCard() {
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                 Creating Game...
               </div>
+            ) : !isConnected ? (
+              <div className="flex items-center gap-2">
+                <WifiOff className="h-4 w-4" />
+                Connecting to Server...
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Create New Game
               </div>
             )}
-            {isHovering && !isCreatingGame && (
+            {isHovering && !isCreatingGame && isConnected && (
               <div className="absolute inset-0 -z-10 animate-pulse rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 opacity-75 blur-lg"></div>
             )}
           </Button>
         )}
-        {/* <Button 
-          onClick={handleCreateGame}
-          disabled={gameCreated}
-          className="w-full"
-        >
-          {gameCreated ? "Game Created" : "Create Game"}
-        </Button> */}
       </CardFooter>
     </Card>
-  )
+  );
 }

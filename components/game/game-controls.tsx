@@ -1,118 +1,73 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import type { RootState } from "@/redux/store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { rollDiceAndBroadcast, setDiceValueAndBroadcast, nextTurnAndBroadcast } from "@/redux/features/game/gameSlice"
 import { GamepadIcon as GameController } from "lucide-react"
+import { useGameStore } from "@/store/gameStore"
+import { socketManager } from "@/lib/socket-manager"
 
 export function GameControls() {
-  const dispatch = useDispatch()
-  const { status, players, currentPlayerIndex, diceValue, isDiceRolling, lastRolledSix, turnInProgress } = useSelector(
-    (state: RootState) => state.game,
-  )
-  const { tokens } = useSelector((state: RootState) => state.board)
-  const { address } = useSelector((state: RootState) => state.wallet)
+  const {
+    status,
+    players,
+    currentPlayerIndex,
+    dice,
+    myTurn,
+    tokens,
+    selectedToken,
+    setTokens,
+    selectToken,
+    gameId,
+  } = useGameStore()
+
+  const [isDiceRolling, setIsDiceRolling] = useState(false)
+  const [diceValue, setDiceValue] = useState<number | null>(null)
   const [isHovering, setIsHovering] = useState(false)
-  const [autoSwitchTimer, setAutoSwitchTimer] = useState<NodeJS.Timeout | null>(null)
 
-  // Get current player
   const currentPlayer = players[currentPlayerIndex] || null
-  const isCurrentPlayerTurn = currentPlayer?.address === address
+  const isCurrentPlayerTurn = myTurn
   const currentPlayerColors = currentPlayer?.colors || []
-  const isComputerTurn = currentPlayer?.address === "0xComputer...Bot"
 
-  // Clear any existing timers when component unmounts
   useEffect(() => {
+    const offDiceRolled = socketManager.onDiceRolled((data) => {
+      setDiceValue(data.dice[0]) 
+      setIsDiceRolling(false)
+    })
+
     return () => {
-      if (autoSwitchTimer) {
-        clearTimeout(autoSwitchTimer)
-      }
+      offDiceRolled()
     }
-  }, [autoSwitchTimer])
+  }, [])
 
-  // Check if player has any valid moves after rolling
-  useEffect(() => {
-    // Only run this check when a dice has been rolled and it's not a 6
-    if (status === "playing" && diceValue !== null && !isDiceRolling && isCurrentPlayerTurn) {
-      // Get current player's tokens
-      const playerTokens = tokens.filter((token) => currentPlayerColors.includes(token.color))
-
-      // Check if all tokens are still in home
-      const allTokensInHome = playerTokens.every((token) => token.isHome)
-
-      // If all tokens are in home and dice value is not 6, automatically move to next turn
-      if (allTokensInHome && diceValue !== 6) {
-        // Add a small delay to show the dice value before moving to next turn
-        const timer = setTimeout(() => {
-          dispatch(nextTurnAndBroadcast())
-        }, 1500)
-        setAutoSwitchTimer(timer)
-        return
-      }
-
-      // If rolled a 6 but no valid moves (all tokens completed), move to next turn
-      if (diceValue === 6 && playerTokens.every((token) => token.isCompleted)) {
-        const timer = setTimeout(() => {
-          dispatch(nextTurnAndBroadcast())
-        }, 1500)
-        setAutoSwitchTimer(timer)
-        return
-      }
-
-      // Check if there are any tokens in play but no valid moves
-      if (!allTokensInHome) {
-        // Check if any token has valid moves
-        const hasValidMoves = playerTokens.some((token) => {
-          if (token.isHome || token.isCompleted) return false
-
-          // Calculate possible moves for this token
-          return calculatePossibleMoves(token, diceValue).length > 0
-        })
-
-        // If no valid moves, automatically move to next turn
-        if (!hasValidMoves) {
-          const timer = setTimeout(() => {
-            dispatch(nextTurnAndBroadcast())
-          }, 1500)
-          setAutoSwitchTimer(timer)
-        }
-      }
-    }
-  }, [diceValue, isDiceRolling, status, isCurrentPlayerTurn, tokens, currentPlayerColors, dispatch])
-
-  // Calculate possible moves for a token
-  const calculatePossibleMoves = (token: any, diceValue: number) => {
-    if (!diceValue || token.isCompleted) return []
-
-    // If token is in home and dice value is not 6, no moves possible
-    if (token.isHome && diceValue !== 6) return []
-
-    // If token is in home and dice value is 6, can move to start position
-    if (token.isHome && diceValue === 6) {
-      return [{ x: token.position.x, y: token.position.y }] // Just a placeholder to indicate a move is possible
-    }
-
-    // For tokens in play, we'll just return a placeholder since we're only checking if moves exist
-    return [{ x: token.position.x, y: token.position.y }]
-  }
-
-  // Handle dice roll
-  const handleRollDice = () => {
+  const handleRollDice = async () => {
     if (status !== "playing" || !isCurrentPlayerTurn || isDiceRolling || diceValue !== null) return
 
-    dispatch(rollDiceAndBroadcast())
+    setIsDiceRolling(true)
 
-    // Simulate dice roll
-    setTimeout(() => {
-      const newDiceValue = Math.floor(Math.random() * 6) + 1
-      dispatch(setDiceValueAndBroadcast(newDiceValue))
-    }, 1000)
+    try {
+      socketManager.rollDice(gameId!)
+    } catch (error) {
+      console.error("Failed to roll dice:", error)
+      setIsDiceRolling(false)
+    }
   }
 
-  // Render dice dots
+  const handleTokenClick = (tokenId: string) => {
+    selectToken(tokenId)
+  }
+
+  const handleCellClick = async (x: number, y: number) => {
+    if (!selectedToken || !diceValue) return
+
+    try {
+      socketManager.playRoll(selectedToken.id, diceValue, gameId!)
+      setDiceValue(null) // Reset dice value after move
+    } catch (error) {
+      console.error("Failed to play roll:", error)
+    }
+  }
+
   const renderDiceDots = () => {
     if (!diceValue) return null
 
@@ -161,13 +116,7 @@ export function GameControls() {
     if (status !== "playing") {
       return status === "waiting"
         ? "Waiting for opponent"
-        : status === "color-selection"
-          ? "Select your colors"
-          : "Game over"
-    }
-
-    if (isComputerTurn) {
-      return isDiceRolling ? "Computer is rolling..." : diceValue ? "Computer is moving..." : "Computer's turn"
+        : "Game over"
     }
 
     if (isCurrentPlayerTurn) {
@@ -175,14 +124,6 @@ export function GameControls() {
         return "Rolling dice..."
       }
       if (diceValue) {
-        // Check if all tokens are in home
-        const playerTokens = tokens.filter((token) => currentPlayerColors.includes(token.color))
-        const allTokensInHome = playerTokens.every((token) => token.isHome)
-
-        if (allTokensInHome && diceValue !== 6) {
-          return `Rolled ${diceValue}. No moves possible. Waiting...`
-        }
-
         return diceValue === 6 ? "You rolled a 6! Select a token to move" : "Select a token to move"
       }
       return "Your turn - Roll the dice"

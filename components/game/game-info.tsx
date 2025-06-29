@@ -1,31 +1,25 @@
 "use client"
 
-import { useSelector } from "react-redux"
-import type { RootState } from "@/redux/store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Trophy } from "lucide-react"
+import { useGameStore } from "@/store/gameStore"
+import { useUserStore } from "@/store/userStore"
 import formatWalletAddress from "@/lib/utils"
 
 export function GameInfo() {
-  const { gameId, status, players, winner, stakeAmount, currentPlayerIndex } = useSelector(
-    (state: RootState) => state.game,
-  )
-  const { address, currentUser } = useSelector((state: RootState) => state.wallet)
+  const { gameId, status, players, currentPlayerIndex } = useGameStore()
+  const { user: address } = useUserStore()
 
   // Find current player
   const currentPlayer = players.find((p) => p.address === address)
   const opponent = players.find((p) => p.address !== address)
-  const activePlayer = players[currentPlayerIndex]
 
-  // Find winner
-  const winnerPlayer = players.find((p) => p.id === winner)
+  const activePlayer = players[currentPlayerIndex]
 
   // Format player name
   const formatPlayerName = (playerAddress: string) => {
     if (playerAddress === "0xComputer...Bot") return "Computer"
-    if (playerAddress === "0xUser1...5678") return "User 1"
-    if (playerAddress === "0xUser2...9876") return "User 2"
-    return playerAddress
+    return formatWalletAddress(playerAddress)
   }
 
   return (
@@ -47,14 +41,14 @@ export function GameInfo() {
                 {status === "waiting" && players.length < 2 ? "Waiting for opponent" : status}
               </span>
             </div>
-            <div className="mt-2 flex items-center justify-between">
+            {/* <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Stake</span>
               <span className="font-mono text-sm">{stakeAmount} SOL</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Prize Pool</span>
               <span className="font-mono text-sm">{stakeAmount * 2 * 0.9} SOL</span>
-            </div>
+            </div> */}
             {status === "playing" && (
               <div className="mt-2 flex items-center justify-between">
                 <span className="text-sm">Current Turn</span>
@@ -106,7 +100,7 @@ export function GameInfo() {
             </div>
           </div>
 
-          {status === "finished" && winnerPlayer && (
+          {/* {status === "finished" && winnerPlayer && (
             <div className="rounded-lg border border-border bg-gradient-to-r from-blue-500/20 to-purple-500/20 p-4 text-center">
               <Trophy className="mx-auto h-8 w-8 text-yellow-400" />
               <div className="mt-2 text-lg font-bold">
@@ -118,7 +112,7 @@ export function GameInfo() {
                   : `${formatPlayerName(winnerPlayer.address)} won ${stakeAmount * 2 * 0.9} SOL`}
               </div>
             </div>
-          )}
+          )} */}
         </div>
       </CardContent>
     </Card>

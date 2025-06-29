@@ -10,7 +10,8 @@ export const config = {
          * - _next directory (Next.js static files)
          * - favicon.ico, sitemap.xml, robots.txt
          * - image files
+         * - dashboard routes (handled by client-side auth)
          */
-        '/((?!_next|favicon.ico|how-to-play|sitemap.xml|robots.txt|.*\.jpg|.*\.png|.*\.svg|.*\.gif).*)',
+        '/((?!_next|favicon.ico|how-to-play|sitemap.xml|robots.txt|dashboard|.*\.jpg|.*\.png|.*\.svg|.*\.gif).*)',
     ],
 }
