@@ -1,5 +1,4 @@
 import { AppConstants } from "@/lib/app_constants";
-import { joinGame } from "@/redux/features/game/gameSlice";
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { useState, useEffect } from "react";

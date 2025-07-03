@@ -2,96 +2,38 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/boardo_contract.json`.
+ * IDL can be found at `target/idl/boardoverse.json`.
  */
-export type BoardoContract = {
-  "address": "AJsNVAr3m5wGLwY9bALRDsX9zeg9VvDJNCAHnpgUwpoc",
+export type Boardoverse = {
+  "address": "6Jw4XxQF9W4GvAAHsf1pRcbmzd7sEPVDGiyLCxtfbtqS",
   "metadata": {
-    "name": "boardoContract",
+    "name": "boardoverse",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
   },
   "instructions": [
     {
-      "name": "createGame",
+      "name": "endGame",
       "discriminator": [
-        124,
-        69,
-        75,
-        66,
-        184,
-        220,
-        72,
-        206
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  66,
-                  79,
-                  65,
-                  82,
-                  68,
-                  79,
-                  86,
-                  69,
-                  82,
-                  83,
-                  69
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "gameId"
-              }
-            ]
-          }
-        },
-        {
-          "name": "player1",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "gameId",
-          "type": "string"
-        },
-        {
-          "name": "betAmount",
-          "type": "u64"
-        },
-        {
-          "name": "arbiter",
-          "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "declareWinner",
-      "discriminator": [
-        140,
+        224,
         135,
-        197,
-        50,
-        9,
-        23,
-        4,
-        80
+        245,
+        99,
+        67,
+        175,
+        121,
+        252
       ],
       "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "game"
+          ]
+        },
         {
           "name": "game",
           "writable": true,
@@ -114,24 +56,63 @@ export type BoardoContract = {
                 ]
               },
               {
-                "kind": "arg",
-                "path": "gameId"
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "game.game_id",
+                "account": "game"
               }
             ]
           }
         },
         {
-          "name": "arbiter",
+          "name": "gameTokenAccount",
           "writable": true,
-          "signer": true
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  66,
+                  79,
+                  65,
+                  82,
+                  68,
+                  79,
+                  86,
+                  69,
+                  82,
+                  83,
+                  69
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              },
+              {
+                "kind": "account",
+                "path": "game"
+              }
+            ]
+          }
         },
         {
-          "name": "player1",
+          "name": "winnerTokenAccount",
           "writable": true
         },
         {
-          "name": "player2",
+          "name": "destinationAccount",
           "writable": true
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "systemProgram",
@@ -142,7 +123,66 @@ export type BoardoContract = {
         {
           "name": "winner",
           "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "join",
+      "discriminator": [
+        206,
+        55,
+        2,
+        106,
+        113,
+        220,
+        17,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "game",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  97,
+                  109,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "gameId"
+              }
+            ]
+          }
         },
+        {
+          "name": "player",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "playerTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "gameTokenAccount",
+          "writable": true
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
         {
           "name": "gameId",
           "type": "string"
@@ -150,18 +190,23 @@ export type BoardoContract = {
       ]
     },
     {
-      "name": "joinGame",
+      "name": "startGame",
       "discriminator": [
-        107,
-        112,
-        18,
-        38,
-        56,
-        173,
-        60,
-        128
+        249,
+        47,
+        252,
+        172,
+        184,
+        162,
+        245,
+        14
       ],
       "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
         {
           "name": "game",
           "writable": true,
@@ -184,6 +229,10 @@ export type BoardoContract = {
                 ]
               },
               {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
                 "kind": "arg",
                 "path": "gameId"
               }
@@ -191,37 +240,7 @@ export type BoardoContract = {
           }
         },
         {
-          "name": "player2",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "gameId",
-          "type": "string"
-        }
-      ]
-    },
-    {
-      "name": "stopGame",
-      "discriminator": [
-        221,
-        21,
-        45,
-        30,
-        166,
-        61,
-        130,
-        127
-      ],
-      "accounts": [
-        {
-          "name": "game",
+          "name": "gameTokenAccount",
           "writable": true,
           "pda": {
             "seeds": [
@@ -242,24 +261,26 @@ export type BoardoContract = {
                 ]
               },
               {
-                "kind": "arg",
-                "path": "gameId"
+                "kind": "account",
+                "path": "mint"
+              },
+              {
+                "kind": "account",
+                "path": "game"
               }
             ]
           }
         },
         {
-          "name": "arbiter",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "player1",
+          "name": "creatorTokenAccount",
           "writable": true
         },
         {
-          "name": "player2",
-          "writable": true
+          "name": "mint"
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "systemProgram",
@@ -270,6 +291,10 @@ export type BoardoContract = {
         {
           "name": "gameId",
           "type": "string"
+        },
+        {
+          "name": "amountToStake",
+          "type": "u64"
         }
       ]
     }
@@ -292,58 +317,48 @@ export type BoardoContract = {
   "errors": [
     {
       "code": 6000,
-      "name": "insufficientFunds",
-      "msg": "Insufficient funds in token account"
+      "name": "invalidTokenOwner",
+      "msg": "Invalid Token owner"
     },
     {
       "code": 6001,
-      "name": "invalidBetAmount",
-      "msg": "Invalid bet amount"
+      "name": "invalidGameCreator",
+      "msg": "Invalid Game creator"
     },
     {
       "code": 6002,
-      "name": "gameNotWaitingForPlayer2",
-      "msg": "Game is not waiting for player 2"
+      "name": "gameNotActive",
+      "msg": "Game not active"
     },
     {
       "code": 6003,
-      "name": "gameAlreadyFull",
-      "msg": "Game is already full"
-    },
-    {
-      "code": 6004,
-      "name": "cannotPlayAgainstSelf",
-      "msg": "Cannot play against yourself"
-    },
-    {
-      "code": 6005,
-      "name": "unauthorizedArbiter",
-      "msg": "Unauthorized arbiter"
-    },
-    {
-      "code": 6006,
-      "name": "gameNotInProgress",
-      "msg": "Game is not in progress"
-    },
-    {
-      "code": 6007,
       "name": "invalidWinner",
       "msg": "Invalid winner"
     },
     {
+      "code": 6004,
+      "name": "invalidGameId",
+      "msg": "Invalid game ID"
+    },
+    {
+      "code": 6005,
+      "name": "gameAlreadyFull",
+      "msg": "Game already has two players"
+    },
+    {
+      "code": 6006,
+      "name": "stakeDeadlinePassed",
+      "msg": "Stake deadline has passed"
+    },
+    {
+      "code": 6007,
+      "name": "playerCannotJoinOwnGame",
+      "msg": "Player cannot join their own game"
+    },
+    {
       "code": 6008,
-      "name": "unauthorizedPlayer",
-      "msg": "Unauthorized player"
-    },
-    {
-      "code": 6009,
-      "name": "cannotStopInProgressGame",
-      "msg": "Cannot stop game that is in progress"
-    },
-    {
-      "code": 6010,
-      "name": "gameAlreadyFinished",
-      "msg": "Game is already finished"
+      "name": "invalidTokenAccount",
+      "msg": "Invalid token account"
     }
   ],
   "types": [
@@ -353,35 +368,25 @@ export type BoardoContract = {
         "kind": "struct",
         "fields": [
           {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
             "name": "gameId",
             "type": "string"
           },
           {
-            "name": "player1",
-            "type": "pubkey"
+            "name": "totalStake",
+            "type": "u64"
+          },
+          {
+            "name": "stakeDeadline",
+            "type": "i64"
           },
           {
             "name": "player2",
-            "type": "pubkey"
-          },
-          {
-            "name": "arbiter",
-            "type": "pubkey"
-          },
-          {
-            "name": "betAmount",
-            "type": "u64"
-          },
-          {
-            "name": "totalPot",
-            "type": "u64"
-          },
-          {
-            "name": "status",
             "type": {
-              "defined": {
-                "name": "gameStatus"
-              }
+              "option": "pubkey"
             }
           },
           {
@@ -391,28 +396,37 @@ export type BoardoContract = {
             }
           },
           {
+            "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "startedAt",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "endedAt",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
             "name": "bump",
             "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "gameStatus",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "waitingForPlayer2"
           },
           {
-            "name": "inProgress"
-          },
-          {
-            "name": "finished"
-          },
-          {
-            "name": "cancelled"
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
           }
         ]
       }

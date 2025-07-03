@@ -3,15 +3,12 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, Copy } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 export function WaitingForOpponent({ gameId }: { gameId: string }) {
   const copyGameId = () => {
     navigator.clipboard.writeText(gameId)
-    toast({
-      title: "Game ID copied!",
-      description: "Share this with another player to join your game.",
-    })
+    toast.success("Game ID copied! Share this with another player to join your game.")
   }
 
   return (

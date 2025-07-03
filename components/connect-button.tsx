@@ -1,55 +1,60 @@
-"use client"
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import React, { useEffect } from "react";
+import { useUserStore } from "@/store/userStore";
+import { checkAndSetupUser } from "@/lib/user-manager";
+import { toast } from "sonner";
 
-import { RootState } from "@/redux/store"
-import { useEffect, useState } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { Button } from "./ui/button"
-import { useUser } from "@civic/auth-web3/react";
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import { connectWallet, connectWalletSuccess } from "@/redux/features/wallet/walletSlice"
+const ConnectWallet = () => {
+  const { connected, publicKey } = useWallet();
+  const { setUser, setUserData, setWalletAddress, setConnecting, clear } = useUserStore();
 
-export default function ConnectButton() {
-    const [isHovering, setIsHovering] = useState(false)
-    const router = useRouter()
-    const [showUserSelect, setShowUserSelect] = useState(false)
-    const { connected, isConnecting, currentUser } = useSelector((state: RootState) => state.wallet)
-    const { signIn, user } = useUser()
-    const dispatch = useDispatch()
+  useEffect(() => {
+    const handleWalletChange = async () => {
+      const newAddress = connected && publicKey ? publicKey.toBase58() : null;
 
-    const handleConnectWallet = async () => {
-        toast("Signing in...")
+      if (newAddress) {
+        try {
+          setConnecting(true); // Indicate connection is in progress
+          setWalletAddress(newAddress); // Update Zustand store with wallet address
+          
+          // Use the centralized user management function
+          const result = await checkAndSetupUser(newAddress);
 
-        signIn()
-            .catch((error) => {
-                console.error("Error signing in:", error);
-                toast.error("Error signing in. Please try again.");
-            });
-        dispatch(connectWallet())
-    }
+          if (result.error) {
+            throw new Error(result.error);
+          }
 
-    // When user state changes and we were in signing in process, navigate
-    useEffect(() => {
-        if (user && isConnecting) {
-            dispatch(connectWalletSuccess());
-            router.push("/dashboard")
-            toast.success("Signed in successfully");
+          // Update Zustand store with full user data
+          setUser(newAddress);
+          setUserData(result.userData || null);
+          setWalletAddress(newAddress);
+
+          // Show appropriate message
+          if (result.isNewUser) {
+            toast.success(result.message);
+          } else {
+            toast.success(result.message);
+          }
+
+        } catch (error) {
+          console.error("Failed to update wallet address:", error);
+          toast.error("Failed to connect wallet");
+          setConnecting(false);
         }
-    }, [user, isConnecting]);
+      } else {
+        clear(); 
+      }
+    };
 
-    return (
-        <Button
-            className="web3-button"
-            size="lg"
-            onClick={handleConnectWallet}
-            disabled={isConnecting}
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
-        >
-            {connected ? "Go to Dashboard" : "Sign in"}
-            {isHovering && !connected && !isConnecting && (
-                <div className="absolute inset-0 -z-10 animate-pulse rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 opacity-75 blur-lg"></div>
-            )}
-        </Button>
-    )
-}
+    handleWalletChange();
+  }, [connected, publicKey, setUser, setUserData, setWalletAddress, setConnecting, clear]);
+
+  return (
+    <div>
+      <WalletMultiButton />
+    </div>
+  );
+};
+
+export default ConnectWallet;

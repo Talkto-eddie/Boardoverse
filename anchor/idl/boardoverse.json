@@ -1,33 +1,25 @@
 {
-  "address": "6Jw4XxQF9W4GvAAHsf1pRcbmzd7sEPVDGiyLCxtfbtqS",
+  "address": "AJsNVAr3m5wGLwY9bALRDsX9zeg9VvDJNCAHnpgUwpoc",
   "metadata": {
-    "name": "boardoverse",
+    "name": "boardo_contract",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor"
   },
   "instructions": [
     {
-      "name": "end_game",
+      "name": "create_game",
       "discriminator": [
-        224,
-        135,
-        245,
-        99,
-        67,
-        175,
-        121,
-        252
+        124,
+        69,
+        75,
+        66,
+        184,
+        220,
+        72,
+        206
       ],
       "accounts": [
-        {
-          "name": "creator",
-          "writable": true,
-          "signer": true,
-          "relations": [
-            "game"
-          ]
-        },
         {
           "name": "game",
           "writable": true,
@@ -50,19 +42,52 @@
                 ]
               },
               {
-                "kind": "account",
-                "path": "creator"
-              },
-              {
-                "kind": "account",
-                "path": "game.game_id",
-                "account": "Game"
+                "kind": "arg",
+                "path": "game_id"
               }
             ]
           }
         },
         {
-          "name": "game_token_account",
+          "name": "player1",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "game_id",
+          "type": "string"
+        },
+        {
+          "name": "bet_amount",
+          "type": "u64"
+        },
+        {
+          "name": "arbiter",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "declare_winner",
+      "discriminator": [
+        140,
+        135,
+        197,
+        50,
+        9,
+        23,
+        4,
+        80
+      ],
+      "accounts": [
+        {
+          "name": "game",
           "writable": true,
           "pda": {
             "seeds": [
@@ -83,30 +108,24 @@
                 ]
               },
               {
-                "kind": "account",
-                "path": "mint"
-              },
-              {
-                "kind": "account",
-                "path": "game"
+                "kind": "arg",
+                "path": "game_id"
               }
             ]
           }
         },
         {
-          "name": "winner_token_account",
+          "name": "arbiter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player1",
           "writable": true
         },
         {
-          "name": "destination_account",
+          "name": "player2",
           "writable": true
-        },
-        {
-          "name": "mint"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "system_program",
@@ -117,90 +136,26 @@
         {
           "name": "winner",
           "type": "pubkey"
-        }
-      ]
-    },
-    {
-      "name": "join",
-      "discriminator": [
-        206,
-        55,
-        2,
-        106,
-        113,
-        220,
-        17,
-        163
-      ],
-      "accounts": [
-        {
-          "name": "game",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  97,
-                  109,
-                  101
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "game_id"
-              }
-            ]
-          }
         },
         {
-          "name": "player",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "player_token_account",
-          "writable": true
-        },
-        {
-          "name": "game_token_account",
-          "writable": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "game_id",
+          "name": "_game_id",
           "type": "string"
         }
       ]
     },
     {
-      "name": "start_game",
+      "name": "join_game",
       "discriminator": [
-        249,
-        47,
-        252,
-        172,
-        184,
-        162,
-        245,
-        14
+        107,
+        112,
+        18,
+        38,
+        56,
+        173,
+        60,
+        128
       ],
       "accounts": [
-        {
-          "name": "creator",
-          "writable": true,
-          "signer": true
-        },
         {
           "name": "game",
           "writable": true,
@@ -223,10 +178,6 @@
                 ]
               },
               {
-                "kind": "account",
-                "path": "creator"
-              },
-              {
                 "kind": "arg",
                 "path": "game_id"
               }
@@ -234,7 +185,37 @@
           }
         },
         {
-          "name": "game_token_account",
+          "name": "player2",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_game_id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "stop_game",
+      "discriminator": [
+        221,
+        21,
+        45,
+        30,
+        166,
+        61,
+        130,
+        127
+      ],
+      "accounts": [
+        {
+          "name": "game",
           "writable": true,
           "pda": {
             "seeds": [
@@ -255,26 +236,24 @@
                 ]
               },
               {
-                "kind": "account",
-                "path": "mint"
-              },
-              {
-                "kind": "account",
-                "path": "game"
+                "kind": "arg",
+                "path": "game_id"
               }
             ]
           }
         },
         {
-          "name": "creator_token_account",
+          "name": "arbiter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player1",
           "writable": true
         },
         {
-          "name": "mint"
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "name": "player2",
+          "writable": true
         },
         {
           "name": "system_program",
@@ -283,12 +262,8 @@
       ],
       "args": [
         {
-          "name": "game_id",
+          "name": "_game_id",
           "type": "string"
-        },
-        {
-          "name": "amount_to_stake",
-          "type": "u64"
         }
       ]
     }
@@ -311,48 +286,58 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidTokenOwner",
-      "msg": "Invalid Token owner"
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds in token account"
     },
     {
       "code": 6001,
-      "name": "InvalidGameCreator",
-      "msg": "Invalid Game creator"
+      "name": "InvalidBetAmount",
+      "msg": "Invalid bet amount"
     },
     {
       "code": 6002,
-      "name": "GameNotActive",
-      "msg": "Game not active"
+      "name": "GameNotWaitingForPlayer2",
+      "msg": "Game is not waiting for player 2"
     },
     {
       "code": 6003,
+      "name": "GameAlreadyFull",
+      "msg": "Game is already full"
+    },
+    {
+      "code": 6004,
+      "name": "CannotPlayAgainstSelf",
+      "msg": "Cannot play against yourself"
+    },
+    {
+      "code": 6005,
+      "name": "UnauthorizedArbiter",
+      "msg": "Unauthorized arbiter"
+    },
+    {
+      "code": 6006,
+      "name": "GameNotInProgress",
+      "msg": "Game is not in progress"
+    },
+    {
+      "code": 6007,
       "name": "InvalidWinner",
       "msg": "Invalid winner"
     },
     {
-      "code": 6004,
-      "name": "InvalidGameId",
-      "msg": "Invalid game ID"
-    },
-    {
-      "code": 6005,
-      "name": "GameAlreadyFull",
-      "msg": "Game already has two players"
-    },
-    {
-      "code": 6006,
-      "name": "StakeDeadlinePassed",
-      "msg": "Stake deadline has passed"
-    },
-    {
-      "code": 6007,
-      "name": "PlayerCannotJoinOwnGame",
-      "msg": "Player cannot join their own game"
-    },
-    {
       "code": 6008,
-      "name": "InvalidTokenAccount",
-      "msg": "Invalid token account"
+      "name": "UnauthorizedPlayer",
+      "msg": "Unauthorized player"
+    },
+    {
+      "code": 6009,
+      "name": "CannotStopInProgressGame",
+      "msg": "Cannot stop game that is in progress"
+    },
+    {
+      "code": 6010,
+      "name": "GameAlreadyFinished",
+      "msg": "Game is already finished"
     }
   ],
   "types": [
@@ -362,25 +347,35 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "creator",
-            "type": "pubkey"
-          },
-          {
             "name": "game_id",
             "type": "string"
           },
           {
-            "name": "total_stake",
+            "name": "player1",
+            "type": "pubkey"
+          },
+          {
+            "name": "player2",
+            "type": "pubkey"
+          },
+          {
+            "name": "arbiter",
+            "type": "pubkey"
+          },
+          {
+            "name": "bet_amount",
             "type": "u64"
           },
           {
-            "name": "stake_deadline",
-            "type": "i64"
+            "name": "total_pot",
+            "type": "u64"
           },
           {
-            "name": "player_2",
+            "name": "status",
             "type": {
-              "option": "pubkey"
+              "defined": {
+                "name": "GameStatus"
+              }
             }
           },
           {
@@ -390,37 +385,28 @@
             }
           },
           {
-            "name": "is_active",
-            "type": "bool"
-          },
-          {
-            "name": "created_at",
-            "type": "i64"
-          },
-          {
-            "name": "started_at",
-            "type": {
-              "option": "i64"
-            }
-          },
-          {
-            "name": "ended_at",
-            "type": {
-              "option": "i64"
-            }
-          },
-          {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "WaitingForPlayer2"
           },
           {
-            "name": "reserved",
-            "type": {
-              "array": [
-                "u8",
-                64
-              ]
-            }
+            "name": "InProgress"
+          },
+          {
+            "name": "Finished"
+          },
+          {
+            "name": "Cancelled"
           }
         ]
       }
