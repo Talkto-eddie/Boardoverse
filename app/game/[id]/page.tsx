@@ -9,8 +9,7 @@ import { GameInfo } from "@/components/game/game-info"
 import { GameControls } from "@/components/game/game-controls"
 import { WaitingForOpponent } from "@/components/game/waiting-for-opponent"
 
-import { socketManager } from "@/lib/socket-manager"
-import { useSocketStore } from "@/store/SocketStore"
+import { supabaseGameManager } from "@/lib/supabase-game-manager"
 import { useUserStore } from "@/store/userStore"
 import { useGameStore } from "@/store/gameStore"
 import { useBoardStore } from "@/store/boardStore"
@@ -19,9 +18,9 @@ export default function GamePage() {
   const router = useRouter()
   const { id: gameIdParam } = useParams<{ id: string }>()
   const [initialised, setInitialised] = useState(false)
+  const [isConnecting, setIsConnecting] = useState(false)
 
-  const { connect, disconnect, isConnected } = useSocketStore()
-  const { user, connected } = useUserStore()
+  const { userData, walletAddress } = useUserStore()
   const {
     gameId,
     status,
@@ -35,94 +34,146 @@ export default function GamePage() {
   useEffect(() => {
     console.log('Game page mounted:', { 
       gameIdParam, 
-      user, 
-      connected, 
-      isConnected,
+      userData, 
+      walletAddress,
       pathname: window.location.pathname 
     })
   }, [])
 
+  // Connect to Supabase real-time
   useEffect(() => {
-    console.log('Setting up socket connection')
-    const cleanupSocket = connect()
+    console.log('Setting up supabase connection')
+    const cleanup = supabaseGameManager.connect()
     return () => {
-      cleanupSocket
-      disconnect()
+      cleanup()
+      supabaseGameManager.disconnect()
     }
-  }, [connect, disconnect])
+  }, [])
 
   useEffect(() => {
     const run = async () => {
-      console.log('Multiplayer join check:', { 
-        user, 
-        isConnected, 
+      console.log('Supabase join check:', { 
+        userData, 
         initialised, 
-        gameIdParam
+        gameIdParam,
+        isConnecting,
+        gameId  // Also check if we already have a gameId
       })
       
       if (
-        !user ||
-        !isConnected ||
+        !userData?.wallet_address ||
         initialised ||
         !gameIdParam ||
-        gameIdParam === "computer-game"
+        gameIdParam === "computer-game" ||
+        isConnecting ||
+        gameId === gameIdParam  // Skip if we already joined this game
       ) {
         console.log('Skipping join - conditions not met:', {
-          hasUser: !!user,
-          isConnected,
+          hasUserData: !!userData?.wallet_address,
           initialised,
           hasGameIdParam: !!gameIdParam,
-          isComputerGame: gameIdParam === "computer-game"
+          isComputerGame: gameIdParam === "computer-game",
+          isConnecting,
+          alreadyInGame: gameId === gameIdParam
         })
         return
       }
 
       console.log('Attempting to join game:', gameIdParam)
+      setIsConnecting(true)
+      
       try {
-        const res = await socketManager.joinGame(gameIdParam)
+        const res = await supabaseGameManager.joinGame(gameIdParam, userData.wallet_address)
         console.log('Successfully joined game:', res)
-        joinGame(gameIdParam)
+        
+        if (res.error) {
+          throw new Error(res.error)
+        }
+        
+        // Only update store if join was successful and we got a valid response
+        if (res.gameId) {
+          joinGame(gameIdParam)
+        }
+        
+        // Load game metadata
+        try {
+          const gameData = await supabaseGameManager.getGameData(gameIdParam)
+          if (gameData) {
+            const { setGameMetadata } = useGameStore.getState()
+            setGameMetadata({
+              stakeAmount: gameData.stake_amount,
+              vsComputer: gameData.vs_computer,
+              createdAt: gameData.created_at,
+              startedAt: gameData.started_at,
+              finishedAt: gameData.finished_at,
+              winnerWallet: gameData.winner_wallet,
+            })
+          }
+        } catch (metaError) {
+          console.warn('Failed to load game metadata:', metaError)
+        }
+        
+        // Load board paths
+        try {
+          const paths = await supabaseGameManager.getBoardPaths(gameIdParam)
+          if (paths) {
+            fetchBoardPaths(gameIdParam)
+          }
+        } catch (pathError) {
+          console.warn('Failed to load board paths:', pathError)
+        }
+        
       } catch (err) {
         console.error('Failed to join game:', err)
-        toast.error(`Failed to join game: ${(err as Error).message}`)
-        router.push("/")
+        
+        // Handle duplicate key error gracefully (player already in game)
+        const errorMessage = (err as Error).message;
+        if (errorMessage.includes('duplicate key value violates unique constraint')) {
+          console.log('Player already in game, continuing...')
+          joinGame(gameIdParam)  // Still update the local store
+          toast.success('Rejoined game successfully!')
+        } else {
+          toast.error(`Failed to join game: ${errorMessage}`)
+          // router.push("/")
+        }
+      } finally {
+        setIsConnecting(false)
+        setInitialised(true)
       }
-
-      setInitialised(true)
     }
 
     run()
   }, [
-    user,
-    isConnected,
+    userData?.wallet_address,
     initialised,
     gameIdParam,
-    players,
+    isConnecting,
+    gameId,  // Add gameId to dependencies
     joinGame,
     fetchBoardPaths,
     router,
   ])
 
-  // Live game-state events
-  useEffect(() => {
-    if (!isConnected) return
+  // Live game-state events - temporarily disabled until supabase manager is fixed
+  // useEffect(() => {
+  //   if (!userData?.wallet_address || !gameIdParam) return
 
-    const offState = socketManager.onGameStateUpdated((state) => {
-      useGameStore.setState((prevState) => ({
-        ...prevState,
-        ...state, 
-      }))
-    })
-    const offErr = socketManager.onError((err) => toast.error(err.message))
+  //   const offState = supabaseGameManager.onGameStateUpdated((state) => {
+  //     useGameStore.setState((prevState) => ({
+  //       ...prevState,
+  //       ...state, 
+  //     }))
+  //   })
+  //   const offErr = supabaseGameManager.onError((err) => toast.error(err.message))
 
-    return () => {
-      offState()
-      offErr()
-    }
-  }, [isConnected])
+  //   return () => {
+  //     offState()
+  //     offErr()
+  //   }
+  // }, [userData?.wallet_address, gameIdParam])
 
-  if (!user || !connected || !isConnected) {
-    console.log('Showing loading state:', { user, connected, isConnected })
+  if (!userData || !walletAddress || isConnecting) {
+    console.log('Showing loading state:', { userData, walletAddress, isConnecting })
     return (
       <div className="container px-4 py-8 md:px-6">
         <div className="flex items-center justify-center min-h-[400px]">
@@ -130,9 +181,9 @@ export default function GamePage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p>Connecting to game...</p>
             <p className="text-sm text-muted-foreground mt-2">
-              User: {user ? 'Connected' : 'Not connected'} | 
-              Store: {connected ? 'Connected' : 'Not connected'} | 
-              Socket: {isConnected ? 'Connected' : 'Not connected'}
+              User Data: {userData ? 'Loaded' : 'Loading'} | 
+              Wallet: {walletAddress ? 'Connected' : 'Not connected'} | 
+              Status: {isConnecting ? 'Connecting' : 'Ready'}
             </p>
           </div>
         </div>

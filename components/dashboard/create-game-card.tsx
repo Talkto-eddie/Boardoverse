@@ -20,12 +20,16 @@ import {
   WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
-import { socketManager } from "@/lib/socket-manager";
+// import { socketManager } from "@/lib/socket-manager";
 import { useGameStore } from "@/store/gameStore";
-import { useSocketStore } from "@/store/SocketStore";
+import { supabaseGameManager } from "@/lib/supabase-game-manager";
+import { useUserStore } from "@/store/userStore";
+// import { useSocketStore } from "@/store/SocketStore";
 
 export default function CreateGameCard() {
-  const { isConnected } = useSocketStore();
+  // const { isConnected } = useSocketStore();
+  const [isConnected, setIsConnected] = useState(true);
+  const {connect, createGame : sCreategame } = supabaseGameManager;
   const { gameId, createGame } = useGameStore();
   const router = useRouter();
   const [isHovering, setIsHovering] = useState(false);
@@ -35,6 +39,7 @@ export default function CreateGameCard() {
   const [totalAmount, setTotalAmount] = useState("0.11"); // Default total amount
   const [isCreatingGame, setIsCreatingGame] = useState(false); // Track game creation state
   const PLATFORM_FEE_PERCENTAGE = 10; // 10% fee
+  const { userData, walletAddress } = useUserStore();
 
   // Calculate total amount whenever stake amount changes
   useEffect(() => {
@@ -66,21 +71,32 @@ export default function CreateGameCard() {
       return;
     }
 
+    if (!walletAddress || !userData) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
     if (!isConnected) {
       toast.error("Not connected to server. Attempting to reconnect...");
-      socketManager.connect();
+      connect();
+      setIsConnected(true);
       return;
     }
 
     setIsCreatingGame(true);
 
     try {
-      console.log('Creating game...');
-      const response = await socketManager.createGame(false);
+      console.log('Creating game with wallet:', walletAddress);
+      const response = await sCreategame(false, walletAddress, parsedStake);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
       console.log('Game created with ID:', response.gameId);
       
-      // Update the store - await the async call
-      await createGame(false);
+      // Update the store - await the async call and pass stake amount
+      await createGame(false, parsedStake);
       
       // Set the local state
       setCreatedGameId(response.gameId);
@@ -90,7 +106,7 @@ export default function CreateGameCard() {
       toast.success("Game created successfully!");
     } catch (error) {
       console.error("Error creating game:", error);
-      toast.error("Failed to create game. Please try again.");
+      toast.error(`Failed to create game: ${(error as Error).message}`);
     } finally {
       setIsCreatingGame(false);
     }
@@ -155,7 +171,7 @@ export default function CreateGameCard() {
             htmlFor="stake-amount"
             className="block text-sm font-medium text-muted-foreground mb-1"
           >
-            Stake Amount (SOL)
+            Stake Amount (GOR)
           </label>
           <Input
             id="stake-amount"
@@ -172,7 +188,7 @@ export default function CreateGameCard() {
           <div className="rounded-lg border border-border bg-background/5 p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm">Stake Amount</span>
-              <span className="font-mono text-sm">{stakeAmount} SOL</span>
+              <span className="font-mono text-sm">{stakeAmount} GOR</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Platform Fee</span>
@@ -183,7 +199,7 @@ export default function CreateGameCard() {
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm font-medium">Total</span>
               <span className="font-mono text-sm relations font-medium">
-                {totalAmount} SOL
+                {totalAmount} GOR
               </span>
             </div>
           </div>
@@ -223,7 +239,7 @@ export default function CreateGameCard() {
           <Button
             className="web3-button relative w-full"
             onClick={handleCreateGame}
-            disabled={isCreatingGame || gameCreated || !isConnected}
+            disabled={isCreatingGame || gameCreated || !isConnected || !walletAddress || !userData}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
           >
@@ -231,6 +247,11 @@ export default function CreateGameCard() {
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                 Creating Game...
+              </div>
+            ) : !walletAddress || !userData ? (
+              <div className="flex items-center gap-2">
+                <WifiOff className="h-4 w-4" />
+                Connect Wallet First
               </div>
             ) : !isConnected ? (
               <div className="flex items-center gap-2">
@@ -243,7 +264,7 @@ export default function CreateGameCard() {
                 Create New Game
               </div>
             )}
-            {isHovering && !isCreatingGame && isConnected && (
+            {isHovering && !isCreatingGame && isConnected && walletAddress && userData && (
               <div className="absolute inset-0 -z-10 animate-pulse rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 opacity-75 blur-lg"></div>
             )}
           </Button>

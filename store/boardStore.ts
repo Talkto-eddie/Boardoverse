@@ -1,5 +1,9 @@
 import { create } from 'zustand'
-import { BoardPaths, socketManager } from '@/lib/socket-manager'
+import { supabaseGameManager } from '@/lib/supabase-game-manager'
+
+interface BoardPaths {
+  [key: string]: any // Define proper interface based on your board paths structure
+}
 
 interface BoardState {
   boardPaths: BoardPaths | null
@@ -16,7 +20,7 @@ export const useBoardStore = create<BoardState>((set) => ({
   fetchBoardPaths: async (gameId: string) => {
     try {
       set({ loading: true, error: null })
-      const paths = await socketManager.getBoardPaths(gameId)
+      const paths = await supabaseGameManager.getBoardPaths(gameId)
       set({ boardPaths: paths, loading: false })
     } catch (error) {
       set({ error: String(error), loading: false })

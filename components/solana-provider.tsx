@@ -14,23 +14,24 @@ import {
 } from "@solana/wallet-adapter-wallets";
 import { BackpackWalletAdapter } from "@solana/wallet-adapter-backpack";
 import "@solana/wallet-adapter-react-ui/styles.css";
+import { AppConstants } from "@/lib/app_constants";
 
 interface SolanaProviderProps {
   children: ReactNode;
 }
 
 export const SolanaProvider: FC<SolanaProviderProps> = ({ children }) => {
-  const network = WalletAdapterNetwork.Devnet;
+  const network = AppConstants.APP_SOL_ENDPOINT; //WalletAdapterNetwork.Devnet;
 
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const endpoint = useMemo(() => network, [network]);
 
   const wallets = useMemo(
     () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
+      // new PhantomWalletAdapter(),
+      // new SolflareWalletAdapter(),
       new BackpackWalletAdapter(),
     ],
-    []
+    [network]
   );
 
   return (

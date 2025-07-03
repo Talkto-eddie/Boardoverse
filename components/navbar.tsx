@@ -7,19 +7,22 @@ import { Dice5, LogOut, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { useUserStore } from "@/store/userStore"
+import { useWallet } from "@solana/wallet-adapter-react"
 
 export function Navbar() {
   const router = useRouter()
-  const { user, connected, disconnect } = useUserStore()
+  const { user, connected, clear } = useUserStore()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const { disconnect } = useWallet();
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleDisconnect = () => {
-    disconnect()
+  const handleDisconnect = async () => {
+    await disconnect();
+    await clear();
     router.push("/")
   }
 

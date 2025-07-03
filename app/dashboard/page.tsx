@@ -8,6 +8,7 @@ import { PublicKey } from "@solana/web3.js"
 import CreateGameCard from "@/components/dashboard/create-game-card"
 import { useUserStore } from "@/store/userStore"
 import { GamesList } from "@/components/dashboard/games-list"
+import { RecentGamesCard } from "@/components/dashboard/recent-games-card"
 import { useSocketStore } from "@/store/SocketStore"
 
 export default function DashboardPage() {

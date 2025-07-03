@@ -1,6 +1,16 @@
 import { create } from "zustand";
-import { socketManager, GameState as GameStateFromServer  } from "@/lib/socket-manager";
-import { useSocketStore } from "@/store/SocketStore";
+import { supabaseGameManager } from "@/lib/supabase-game-manager";
+import { useUserStore } from "@/store/userStore";
+interface GameStateFromServer {
+  tokens: TokenState[];
+  dice: number[];
+  myTurn: boolean;
+  gameOver: boolean;
+  winner: number | null;
+  currentPlayerWallet?: string;
+  turnStartTime?: string;
+}
+
 interface GameState {
   gameId: string | null;
   players: { address: string; colors: string[] }[];
@@ -12,9 +22,17 @@ interface GameState {
   winner: number | null;
   currentPlayerIndex: number;
   gameOver: boolean;
+  // Additional game metadata
+  stakeAmount: number;
+  vsComputer: boolean;
+  createdAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  winnerWallet: string | null;
   joinGame: (gameId: string) => Promise<void>;
-  createGame: (vsComputer: boolean) => Promise<void>;
-  updateGameState: (state: GameState) => void;
+  createGame: (vsComputer: boolean, stakeAmount?: number) => Promise<void>;
+  updateGameState: (state: GameStateFromServer) => void;
+  setGameMetadata: (metadata: { stakeAmount?: number; vsComputer?: boolean; createdAt?: string; startedAt?: string; finishedAt?: string; winnerWallet?: string }) => void;
   setTokens: (tokens: TokenState[]) => void;
   selectToken: (tokenId: string) => void;
 }
@@ -39,17 +57,29 @@ export const useGameStore = create<GameState>((set, get) => ({
   myTurn: false,
   winner: null,
   currentPlayerIndex: 0,
-  gameOver: false, 
+  gameOver: false,
+  // Additional game metadata
+  stakeAmount: 0,
+  vsComputer: false,
+  createdAt: null,
+  startedAt: null,
+  finishedAt: null,
+  winnerWallet: null, 
   // Join a game
   joinGame: async (gameId: string) => {
-    const { isConnected } = useSocketStore.getState();
+    const { userData, walletAddress } = useUserStore.getState();
 
-    if (!isConnected) {
-      throw new Error("Not connected to server");
+    if (!userData || !walletAddress) {
+      throw new Error("User not connected");
     }
 
     try {
-      const response = await socketManager.joinGame(gameId);
+      const response = await supabaseGameManager.joinGame(gameId, walletAddress);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
       set((state) => ({
         gameId: response.gameId,
         players: [...state.players, { address: response.playerId, colors: response.colors }],
@@ -62,24 +92,44 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   // Create a game
-  createGame: async (vsComputer: boolean) => {
-    const { isConnected } = useSocketStore.getState();
+  createGame: async (vsComputer: boolean, stakeAmount: number = 0) => {
+    const { userData, walletAddress } = useUserStore.getState();
 
-    if (!isConnected) {
-      throw new Error("Not connected to server");
+    if (!userData || !walletAddress) {
+      throw new Error("User not connected");
     }
 
     try {
-      const response = await socketManager.createGame(vsComputer);
+      const response = await supabaseGameManager.createGame(vsComputer, walletAddress, stakeAmount);
+      
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      
       set({
         gameId: response.gameId,
         players: [{ address: response.playerId, colors: response.colors }],
         status: "waiting",
+        stakeAmount: stakeAmount,
+        vsComputer: vsComputer,
+        createdAt: new Date().toISOString(),
       });
     } catch (error) {
       console.error("Failed to create game:", error);
       throw error;
     }
+  },
+
+  setGameMetadata: (metadata) => {
+    set((state) => ({
+      ...state,
+      stakeAmount: metadata.stakeAmount ?? state.stakeAmount,
+      vsComputer: metadata.vsComputer ?? state.vsComputer,
+      createdAt: metadata.createdAt ?? state.createdAt,
+      startedAt: metadata.startedAt ?? state.startedAt,
+      finishedAt: metadata.finishedAt ?? state.finishedAt,
+      winnerWallet: metadata.winnerWallet ?? state.winnerWallet,
+    }));
   },
   updateGameState: (newState: GameStateFromServer) => {
     const currentState = get();

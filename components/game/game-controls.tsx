@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { GamepadIcon as GameController } from "lucide-react"
 import { useGameStore } from "@/store/gameStore"
-import { socketManager } from "@/lib/socket-manager"
+import { useUserStore } from "@/store/userStore"
+import { supabaseGameManager } from "@/lib/supabase-game-manager"
+import { toast } from "sonner"
 
 export function GameControls() {
   const {
@@ -21,34 +23,40 @@ export function GameControls() {
     gameId,
   } = useGameStore()
 
+  const { walletAddress } = useUserStore()
   const [isDiceRolling, setIsDiceRolling] = useState(false)
   const [diceValue, setDiceValue] = useState<number | null>(null)
   const [isHovering, setIsHovering] = useState(false)
+  const [isMoving, setIsMoving] = useState(false)
 
   const currentPlayer = players[currentPlayerIndex] || null
-  const isCurrentPlayerTurn = myTurn
+  const isCurrentPlayerTurn = myTurn && currentPlayer?.address === walletAddress
   const currentPlayerColors = currentPlayer?.colors || []
 
+  // Update dice value from game store
   useEffect(() => {
-    const offDiceRolled = socketManager.onDiceRolled((data) => {
-      setDiceValue(data.dice[0]) 
+    if (dice && dice.length > 0) {
+      setDiceValue(dice[0])
       setIsDiceRolling(false)
-    })
-
-    return () => {
-      offDiceRolled()
     }
-  }, [])
+  }, [dice])
 
   const handleRollDice = async () => {
     if (status !== "playing" || !isCurrentPlayerTurn || isDiceRolling || diceValue !== null) return
 
+    if (!gameId || !walletAddress) {
+      toast.error("Game not ready")
+      return
+    }
+
     setIsDiceRolling(true)
 
     try {
-      socketManager.rollDice(gameId!)
+      await supabaseGameManager.rollDice(gameId, walletAddress)
+      toast.success("Dice rolled!")
     } catch (error) {
       console.error("Failed to roll dice:", error)
+      toast.error(`Failed to roll dice: ${(error as Error).message}`)
       setIsDiceRolling(false)
     }
   }
@@ -57,16 +65,39 @@ export function GameControls() {
     selectToken(tokenId)
   }
 
-  const handleCellClick = async (x: number, y: number) => {
-    if (!selectedToken || !diceValue) return
+  const handleMoveToken = async () => {
+    if (!selectedToken || !diceValue || !gameId || !walletAddress) {
+      toast.error("Select a token and roll dice first")
+      return
+    }
+
+    setIsMoving(true)
 
     try {
-      socketManager.playRoll(selectedToken.id, diceValue, gameId!)
+      await supabaseGameManager.playRoll(selectedToken.id, diceValue, gameId, walletAddress)
       setDiceValue(null) // Reset dice value after move
+      selectToken("") // Deselect token
+      toast.success("Move completed!")
     } catch (error) {
-      console.error("Failed to play roll:", error)
+      console.error("Failed to move token:", error)
+      toast.error(`Failed to move token: ${(error as Error).message}`)
+    } finally {
+      setIsMoving(false)
     }
   }
+
+  // Get moveable tokens for current player
+  const getMoveableTokens = () => {
+    if (!diceValue || !currentPlayerColors || !tokens) return []
+    
+    return tokens.filter(token => 
+      currentPlayerColors.some(color => 
+        token.color.toLowerCase() === color.toLowerCase()
+      ) && token.isClickable
+    )
+  }
+
+  const moveableTokens = getMoveableTokens()
 
   const renderDiceDots = () => {
     if (!diceValue) return null
@@ -124,6 +155,9 @@ export function GameControls() {
         return "Rolling dice..."
       }
       if (diceValue) {
+        if (selectedToken) {
+          return `Selected ${selectedToken.color} token - Click Move to proceed`
+        }
         return diceValue === 6 ? "You rolled a 6! Select a token to move" : "Select a token to move"
       }
       return "Your turn - Roll the dice"
@@ -144,7 +178,7 @@ export function GameControls() {
             <div className={`dice ${isDiceRolling ? "dice-rolling" : ""}`}>
               {isDiceRolling ? null : renderDiceDots()}
             </div>
-            <div className="mt-2 text-sm text-muted-foreground">{getTurnStatusMessage()}</div>
+            <div className="mt-2 text-sm text-muted-foreground text-center">{getTurnStatusMessage()}</div>
           </div>
 
           <Button
@@ -160,13 +194,46 @@ export function GameControls() {
             )}
           </Button>
 
+          {/* Move Token Button */}
+          {diceValue && selectedToken && (
+            <Button
+              className="web3-button relative w-full"
+              onClick={handleMoveToken}
+              disabled={isMoving}
+            >
+              {isMoving ? "Moving..." : `Move ${selectedToken.color} Token`}
+            </Button>
+          )}
+
+          {/* Token Selection */}
+          {diceValue && moveableTokens.length > 0 && (
+            <div className="rounded-lg border border-border bg-background/5 p-3">
+              <div className="text-sm font-medium mb-2">Select a token to move:</div>
+              <div className="grid grid-cols-2 gap-2">
+                {moveableTokens.map((token) => (
+                  <button
+                    key={token.id}
+                    onClick={() => handleTokenClick(token.id)}
+                    className={`p-2 rounded border text-xs font-mono transition-colors ${
+                      selectedToken?.id === token.id
+                        ? "border-blue-500 bg-blue-500/20 text-blue-600"
+                        : "border-border bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {token.color} #{token.index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="rounded-lg border border-border bg-background/5 p-3">
             <div className="text-sm font-medium">How to Play</div>
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
               <li>1. Roll the dice on your turn</li>
               <li>2. Roll a 6 to move tokens out of home</li>
-              <li>3. Click on a token to select it</li>
-              <li>4. Click on a highlighted cell to move</li>
+              <li>3. Select a token from the list</li>
+              <li>4. Click "Move Token" to complete the move</li>
               <li>5. Land on opponent's token to send it home</li>
               <li>6. Roll a 6 to get an extra turn</li>
               <li>7. First to get all tokens to center wins</li>
