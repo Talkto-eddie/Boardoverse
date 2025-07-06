@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Trophy, Copy, Clock, DollarSign, Bot, Gamepad2 } from "lucide-react"
 import { useGameStore } from "@/store/gameStore"
 import { useUserStore } from "@/store/userStore"
-import formatWalletAddress from "@/lib/utils"
 import { toast } from "sonner"
+import { formatWalletAddress } from "@/lib/utils"
 
 export function GameInfo() {
   const { 

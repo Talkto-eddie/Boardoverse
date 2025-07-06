@@ -30,5 +30,5 @@ export class AppConstants {
     decimals: 9
   };
   
-  static readonly EXPLORER_URL: string = "https://explorer.gorbagana.wtf/";//"https://solscan.io";
+  static readonly EXPLORER_URL: string = "https://solscan.io";
 }

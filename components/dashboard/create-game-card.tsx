@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useGameStore } from "@/store/gameStore";
 import { supabaseGameManager } from "@/lib/supabase-game-manager";
 import { useUserStore } from "@/store/userStore";
+import { AppConstants } from "@/lib/app_constants";
 // import { useSocketStore } from "@/store/SocketStore";
 
 export default function CreateGameCard() {
@@ -171,7 +172,7 @@ export default function CreateGameCard() {
             htmlFor="stake-amount"
             className="block text-sm font-medium text-muted-foreground mb-1"
           >
-            Stake Amount (GOR)
+            Stake Amount ({AppConstants.APP_SUPPORTED_CURRENCY.name})
           </label>
           <Input
             id="stake-amount"
@@ -188,7 +189,7 @@ export default function CreateGameCard() {
           <div className="rounded-lg border border-border bg-background/5 p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm">Stake Amount</span>
-              <span className="font-mono text-sm">{stakeAmount} GOR</span>
+              <span className="font-mono text-sm">{stakeAmount} {AppConstants.APP_SUPPORTED_CURRENCY.name}</span>
             </div>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm">Platform Fee</span>
@@ -199,7 +200,7 @@ export default function CreateGameCard() {
             <div className="mt-2 flex items-center justify-between">
               <span className="text-sm font-medium">Total</span>
               <span className="font-mono text-sm relations font-medium">
-                {totalAmount} GOR
+                {totalAmount} {AppConstants.APP_SUPPORTED_CURRENCY.name}
               </span>
             </div>
           </div>

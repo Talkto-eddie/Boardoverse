@@ -66,7 +66,7 @@ export function WalletCard() {
             {
               balance != null ? (
                 <span className="font-mono text-sm">
-                  {Number(balance/LAMPORTS_PER_SOL).toFixed(6)} GOR
+                  {Number(balance/LAMPORTS_PER_SOL).toFixed(6)} {AppConstants.APP_SUPPORTED_CURRENCY.name}
                 </span>
               ) : (
                 <span className="font-mono text-sm">Loading</span>
