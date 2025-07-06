@@ -25,7 +25,6 @@ export function GameControls() {
 
   const { walletAddress } = useUserStore()
   const [isDiceRolling, setIsDiceRolling] = useState(false)
-  const [diceValue, setDiceValue] = useState<number | null>(null)
   const [isHovering, setIsHovering] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
 
@@ -33,16 +32,46 @@ export function GameControls() {
   const isCurrentPlayerTurn = myTurn && currentPlayer?.address === walletAddress
   const currentPlayerColors = currentPlayer?.colors || []
 
-  // Update dice value from game store
+  console.log('GameControls state:', {
+    playersCount: players.length,
+    currentPlayerIndex,
+    currentPlayer: currentPlayer?.address,
+    myTurn,
+    walletAddress,
+    isCurrentPlayerTurn,
+    status
+  })
+
+  // Get dice value from game store (server state)
+  const diceValue = dice && dice.length > 0 ? dice[0] : null
+
+  // Reset rolling state when dice value arrives from server
   useEffect(() => {
-    if (dice && dice.length > 0) {
-      setDiceValue(dice[0])
+    console.log('Dice value changed:', diceValue)
+    if (diceValue !== null) {
       setIsDiceRolling(false)
     }
-  }, [dice])
+  }, [diceValue])
 
   const handleRollDice = async () => {
-    if (status !== "playing" || !isCurrentPlayerTurn || isDiceRolling || diceValue !== null) return
+    console.log('Attempting to roll dice:', {
+      status,
+      isCurrentPlayerTurn,
+      isDiceRolling,
+      diceValue,
+      gameId,
+      walletAddress
+    })
+    
+    if (status !== "playing" || !isCurrentPlayerTurn || isDiceRolling || diceValue !== null) {
+      console.log('Dice roll blocked:', {
+        status: status !== "playing",
+        notPlayerTurn: !isCurrentPlayerTurn,
+        alreadyRolling: isDiceRolling,
+        hasDiceValue: diceValue !== null
+      })
+      return
+    }
 
     if (!gameId || !walletAddress) {
       toast.error("Game not ready")
@@ -54,10 +83,15 @@ export function GameControls() {
     try {
       await supabaseGameManager.rollDice(gameId, walletAddress)
       toast.success("Dice rolled!")
+      
+      // Set a timeout to reset rolling state if no real-time update comes
+      setTimeout(() => {
+        setIsDiceRolling(false)
+      }, 3000)
     } catch (error) {
       console.error("Failed to roll dice:", error)
       toast.error(`Failed to roll dice: ${(error as Error).message}`)
-      setIsDiceRolling(false)
+      setIsDiceRolling(false) // Reset on error
     }
   }
 
@@ -75,7 +109,7 @@ export function GameControls() {
 
     try {
       await supabaseGameManager.playRoll(selectedToken.id, diceValue, gameId, walletAddress)
-      setDiceValue(null) // Reset dice value after move
+      // Don't manually reset dice - let Supabase update handle it
       selectToken("") // Deselect token
       toast.success("Move completed!")
     } catch (error) {
@@ -90,11 +124,24 @@ export function GameControls() {
   const getMoveableTokens = () => {
     if (!diceValue || !currentPlayerColors || !tokens) return []
     
-    return tokens.filter(token => 
-      currentPlayerColors.some(color => 
+    return tokens.filter(token => {
+      // Check if token belongs to current player
+      const belongsToPlayer = currentPlayerColors.some(color => 
         token.color.toLowerCase() === color.toLowerCase()
-      ) && token.isClickable
-    )
+      )
+      
+      if (!belongsToPlayer) return false
+      
+      // Check if token can move based on game rules
+      if (token.position === -1) {
+        // Token is in home - needs a 6 to move out
+        return diceValue === 6
+      } else {
+        // Token is on board - check if it can move forward
+        const newPosition = token.position + diceValue
+        return newPosition <= 56 && token.isClickable
+      }
+    })
   }
 
   const moveableTokens = getMoveableTokens()
@@ -163,7 +210,15 @@ export function GameControls() {
       return "Your turn - Roll the dice"
     }
 
-    return "Waiting for opponent's turn"
+    // Show whose turn it is when it's not the current player's turn
+    const currentPlayerName = currentPlayer?.address ? 
+      `Player ${currentPlayer.address.slice(-4)}` : "Opponent"
+    
+    if (diceValue) {
+      return `${currentPlayerName} rolled ${diceValue} - waiting for their move`
+    }
+    
+    return `${currentPlayerName}'s turn - waiting for dice roll`
   }
 
   return (

@@ -1,11 +1,15 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Trophy, Copy, Clock, DollarSign, Bot, Gamepad2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Users, Trophy, Copy, Clock, DollarSign, Bot, Gamepad2, StopCircle } from "lucide-react"
 import { useGameStore } from "@/store/gameStore"
 import { useUserStore } from "@/store/userStore"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { formatWalletAddress } from "@/lib/utils"
+import { useState } from "react"
 
 export function GameInfo() {
   const { 
@@ -19,15 +23,36 @@ export function GameInfo() {
     startedAt, 
     finishedAt,
     winnerWallet,
-    tokens 
+    tokens,
+    cancelGame 
   } = useGameStore()
   const { userData, walletAddress } = useUserStore()
+  const router = useRouter()
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // Find current player
   const currentPlayer = players.find((p) => p.address === walletAddress)
   const opponent = players.find((p) => p.address !== walletAddress)
 
   const activePlayer = players[currentPlayerIndex]
+
+  // Check if current user is the game creator
+  const isGameCreator = players.length > 0 && players[0]?.address === walletAddress
+
+  // Handle game cancellation
+  const handleCancelGame = async () => {
+    setIsCancelling(true)
+    try {
+      await cancelGame()
+      toast.success("Game cancelled successfully")
+      router.push("/dashboard") // Redirect to dashboard
+    } catch (error) {
+      console.error("Failed to cancel game:", error)
+      toast.error(`Failed to cancel game: ${(error as Error).message}`)
+    } finally {
+      setIsCancelling(false)
+    }
+  }
 
   // Format player name
   const formatPlayerName = (playerAddress: string) => {
@@ -192,6 +217,63 @@ export function GameInfo() {
               )}
             </div>
           </div>
+
+          {/* Stop Game Button */}
+          {(status === "waiting" || status === "playing") && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="w-full"
+                  disabled={isCancelling}
+                >
+                  <StopCircle className="h-4 w-4 mr-2" />
+                  {status === "waiting" 
+                    ? (isGameCreator ? "Cancel Game" : "Leave Game")
+                    : (isGameCreator ? "Stop Game" : "Leave Game")
+                  }
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {status === "waiting" 
+                      ? (isGameCreator ? "Cancel Game?" : "Leave Game?")
+                      : (isGameCreator ? "Stop Game?" : "Leave Game?")
+                    }
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {status === "waiting" 
+                      ? (isGameCreator 
+                          ? "Are you sure you want to cancel this game? This action cannot be undone."
+                          : "Are you sure you want to leave this game? This will cancel the game for all players."
+                        )
+                      : (isGameCreator
+                          ? "Are you sure you want to stop this game? This will end the game for all players and cannot be undone."
+                          : "Are you sure you want to leave this game? This will end the game for all players."
+                        )
+                    }
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleCancelGame}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isCancelling 
+                      ? "Processing..." 
+                      : (status === "waiting" 
+                          ? (isGameCreator ? "Cancel Game" : "Leave Game")
+                          : (isGameCreator ? "Stop Game" : "Leave Game")
+                        )
+                    }
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
 
           {/* Game Progress */}
           {status === "playing" && players.length === 2 && tokens && tokens.length > 0 && (

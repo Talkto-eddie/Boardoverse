@@ -26,6 +26,7 @@ export default function GamePage() {
     status,
     players,
     joinGame,
+    loadCompleteGameState,
     tokens,
     updateGameState,
   } = useGameStore()
@@ -92,8 +93,11 @@ export default function GamePage() {
         
         // Only update store if join was successful and we got a valid response
         if (res.gameId) {
-          joinGame(gameIdParam)
+          await joinGame(gameIdParam)
         }
+        
+        // Load complete game state to ensure all players are visible
+        await loadCompleteGameState(gameIdParam)
         
         // Load game metadata
         try {
@@ -130,7 +134,7 @@ export default function GamePage() {
         const errorMessage = (err as Error).message;
         if (errorMessage.includes('duplicate key value violates unique constraint')) {
           console.log('Player already in game, continuing...')
-          joinGame(gameIdParam)  // Still update the local store
+          await loadCompleteGameState(gameIdParam)  // Load the current state
           toast.success('Rejoined game successfully!')
         } else {
           toast.error(`Failed to join game: ${errorMessage}`)
@@ -150,27 +154,108 @@ export default function GamePage() {
     isConnecting,
     gameId,  // Add gameId to dependencies
     joinGame,
+    loadCompleteGameState,
     fetchBoardPaths,
     router,
   ])
 
-  // Live game-state events - temporarily disabled until supabase manager is fixed
-  // useEffect(() => {
-  //   if (!userData?.wallet_address || !gameIdParam) return
+  // Subscribe to real-time updates
+  useEffect(() => {
+    if (!userData?.wallet_address || !gameIdParam || gameIdParam === "computer-game") {
+      console.log('Skipping real-time setup:', { hasUser: !!userData?.wallet_address, gameIdParam })
+      return
+    }
 
-  //   const offState = supabaseGameManager.onGameStateUpdated((state) => {
-  //     useGameStore.setState((prevState) => ({
-  //       ...prevState,
-  //       ...state, 
-  //     }))
-  //   })
-  //   const offErr = supabaseGameManager.onError((err) => toast.error(err.message))
+    console.log('Setting up real-time subscriptions for game:', gameIdParam)
+    
+    // Subscribe to the game channel
+    const channel = supabaseGameManager.subscribeToGame(gameIdParam)
+    
+    // Listen for dice roll events
+    const offDiceRoll = supabaseGameManager.onDiceRolled((diceData) => {
+      console.log('Dice roll received:', diceData)
+      
+      // Update the dice in the store immediately
+      const { setDice } = useGameStore.getState()
+      setDice(diceData.dice)
+      
+      // Update other game state
+      updateGameState({
+        dice: diceData.dice,
+        myTurn: diceData.playerWallet === userData.wallet_address,
+        currentPlayerWallet: diceData.playerWallet,
+        tokens: [], // Will be updated separately
+        gameOver: false,
+        winner: null,
+        turnStartTime: diceData.timestamp
+      })
+      
+      // Show toast for dice roll
+      if (diceData.playerWallet === userData.wallet_address) {
+        toast.success(`You rolled a ${diceData.dice[0]}!`)
+      } else {
+        toast.info(`Player rolled a ${diceData.dice[0]}`)
+      }
+    })
 
-  //   return () => {
-  //     offState()
-  //     offErr()
-  //   }
-  // }, [userData?.wallet_address, gameIdParam])
+    // Listen for game state updates
+    const offState = supabaseGameManager.onGameStateUpdated((state) => {
+      console.log('Game state updated:', state)
+      updateGameState({
+        tokens: state.tokens || [],
+        dice: state.dice || [],
+        myTurn: state.current_player_wallet === userData.wallet_address,
+        gameOver: state.game_over || false,
+        winner: state.winner || null,
+        currentPlayerWallet: state.current_player_wallet,
+        turnStartTime: state.turn_start_time
+      })
+      
+      // Re-load complete game state to ensure all players are visible
+      if (state.tokens || state.current_player_wallet) {
+        loadCompleteGameState(gameIdParam).catch(console.error)
+      }
+    })
+
+    // Listen for errors
+    const offErr = supabaseGameManager.onError((err) => {
+      console.error('Game error:', err)
+      toast.error(err.message)
+    })
+
+    // Listen for player joins
+    const offPlayerJoin = supabaseGameManager.onPlayerJoined((playerData) => {
+      console.log('Player joined:', playerData)
+      // Reload complete game state when a new player joins
+      loadCompleteGameState(gameIdParam).catch(console.error)
+      toast.info('A player joined the game!')
+    })
+
+    // Listen for game status changes
+    const offGameUpdate = supabaseGameManager.onGameUpdated((gameData) => {
+      console.log('Game updated:', gameData)
+      if (gameData.status === 'playing') {
+        toast.success('Game started!')
+        // Reload complete game state when game starts
+        loadCompleteGameState(gameIdParam).catch(console.error)
+      } else if (gameData.status === 'finished' && gameData.winner_wallet === null) {
+        toast.info('Game was cancelled by another player')
+        // Redirect to dashboard after a short delay
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 2000)
+      }
+    })
+
+    return () => {
+      console.log('Cleaning up real-time subscriptions')
+      offDiceRoll()
+      offState()
+      offErr()
+      offPlayerJoin()
+      offGameUpdate()
+    }
+  }, [userData?.wallet_address, gameIdParam, updateGameState])
 
   if (!userData || !walletAddress || isConnecting) {
     console.log('Showing loading state:', { userData, walletAddress, isConnecting })
@@ -196,7 +281,7 @@ export default function GamePage() {
   }
 
   return (
-    <div className="container px-4 py-8 md:px-6 h-screen">
+    <div className="container px-4 py-4 md:px-6 h-screen">
       <div className="grid gap-6 lg:grid-cols-[1fr_350px] h-full">
         <div className="min-h-0">
           <GameBoard />

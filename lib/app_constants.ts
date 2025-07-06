@@ -18,8 +18,7 @@ export class AppConstants {
 
   public static readonly APP_URL = "https://boardoverse.xyz"
 
-  public static readonly APP_SOL_ENDPOINT = "https://rpc.gorbagana.wtf/";
-  // "https://devnet.helius-rpc.com/?api-key=" + process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+  public static readonly APP_SOL_ENDPOINT = "https://devnet.helius-rpc.com/?api-key=" + process.env.NEXT_PUBLIC_HELIUS_API_KEY;
   // https://mainnet.helius-rpc.com/?api-key=ammmmmm
 
   public static readonly APP_CONNECTION: Connection = new Connection(AppConstants.APP_SOL_ENDPOINT, "confirmed");

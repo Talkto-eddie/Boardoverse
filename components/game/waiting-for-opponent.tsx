@@ -2,13 +2,35 @@
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, Copy } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Loader2, Copy, ArrowLeft } from "lucide-react"
+import { useGameStore } from "@/store/gameStore"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useState } from "react"
 
 export function WaitingForOpponent({ gameId }: { gameId: string }) {
+  const { cancelGame } = useGameStore()
+  const router = useRouter()
+  const [isLeaving, setIsLeaving] = useState(false)
+
   const copyGameId = () => {
     navigator.clipboard.writeText(gameId)
     toast.success("Game ID copied! Share this with another player to join your game.")
+  }
+
+  const handleLeaveGame = async () => {
+    setIsLeaving(true)
+    try {
+      await cancelGame()
+      toast.success("Left game successfully")
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Failed to leave game:", error)
+      toast.error(`Failed to leave game: ${(error as Error).message}`)
+    } finally {
+      setIsLeaving(false)
+    }
   }
 
   return (
@@ -32,9 +54,36 @@ export function WaitingForOpponent({ gameId }: { gameId: string }) {
           </div>
         </div>
 
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground mb-6">
           Another player can join by entering this ID on the dashboard.
         </div>
+
+        {/* Leave Game Button */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm" disabled={isLeaving}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Leave Game
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Leave Game?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to leave this game? This will cancel the game for all players.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Stay</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleLeaveGame}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isLeaving ? "Leaving..." : "Leave Game"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   )

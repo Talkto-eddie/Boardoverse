@@ -271,16 +271,37 @@ class SupabaseGameManager {
                 .update({ tokens: updatedTokens })
                 .eq('game_id', gameId);  // Use the string game_id
 
-            // 6. Start game if full
+            // 6. Start game if full and update the game state properly
             const totalPlayers = game.game_players.length + 1;
             if (totalPlayers >= game.max_players) {
+                // Update game status to playing
                 await supabase
                     .from('games')
                     .update({
                         status: 'playing',
                         started_at: new Date().toISOString()
                     })
-                    .eq('id', game.id);
+                    .eq('game_id', gameId);
+
+                // Set the first player as current player if not already set
+                const { data: currentGameState } = await supabase
+                    .from('game_states')
+                    .select('current_player_wallet')
+                    .eq('game_id', gameId)
+                    .single();
+
+                if (!currentGameState?.current_player_wallet) {
+                    // Set the first player (creator) as the current player
+                    await supabase
+                        .from('game_states')
+                        .update({
+                            current_player_wallet: game.creator_wallet,
+                            turn_start_time: new Date().toISOString()
+                        })
+                        .eq('game_id', gameId);
+                }
+
+                console.log(`Game ${gameId} is now playing with ${totalPlayers} players`);
             }
 
             return {
@@ -333,12 +354,12 @@ class SupabaseGameManager {
     };
 
     // Roll dice
-    rollDice = async (gameId: string, playerWallet: string): Promise<void> => {
+    rollDice = async (gameId: string, playerWallet: string): Promise<number> => {
         try {
             // 1. Verify it's player's turn
             const { data: gameState } = await supabase
                 .from('game_states')
-                .select('current_player_wallet, game_id')
+                .select('current_player_wallet, game_id, dice, tokens')
                 .eq('game_id', gameId)
                 .single();
 
@@ -346,7 +367,12 @@ class SupabaseGameManager {
                 throw new Error('Not your turn');
             }
 
-            // 2. Generate dice roll
+            // 2. Check if dice has already been rolled for this turn
+            if (gameState.dice && gameState.dice.length > 0) {
+                throw new Error('Dice already rolled for this turn');
+            }
+
+            // 3. Generate dice roll
             const diceValue = Math.floor(Math.random() * 6) + 1;
             const rollData: DiceRollData = {
                 playerId: 0, // Will be updated with actual player index
@@ -356,17 +382,30 @@ class SupabaseGameManager {
                 timestamp: new Date().toISOString()
             };
 
-            // 3. Update game state
-            await supabase
+            // 4. Update game state with atomic transaction
+            const { data: updateResult, error: updateError } = await supabase
                 .from('game_states')
                 .update({
                     dice: [diceValue],
                     last_roll_time: new Date().toISOString(),
                     last_roll_player: playerWallet
                 })
-                .eq('game_id', gameState.game_id);
+                .eq('game_id', gameState.game_id)
+                .eq('current_player_wallet', playerWallet) // Double-check it's still their turn
+                .select();
 
-            // 4. Record the move
+            if (updateError) {
+                console.error('Error updating game state:', updateError);
+                throw updateError;
+            }
+
+            if (!updateResult || updateResult.length === 0) {
+                throw new Error('Failed to update game state - not your turn or game state changed');
+            }
+
+            console.log(`Dice rolled successfully: ${diceValue} for player ${playerWallet}`);
+
+            // 5. Record the move
             await supabase
                 .from('game_moves')
                 .insert({
@@ -377,8 +416,17 @@ class SupabaseGameManager {
                     timestamp: new Date().toISOString()
                 });
 
-            // 5. Broadcast to all players
-            await this.broadcastToChannel(gameId, 'diceRolled', rollData);
+            // 6. Update token clickability based on dice value and current positions
+            if (gameState.tokens) {
+                const updatedTokens = await this.updateTokenClickability(gameState.tokens, diceValue, playerWallet, gameId);
+                await supabase
+                    .from('game_states')
+                    .update({ tokens: updatedTokens })
+                    .eq('game_id', gameState.game_id);
+            }
+
+            console.log('Dice rolled successfully:', diceValue);
+            return diceValue;
 
         } catch (error) {
             console.error('Failed to roll dice:', error);
@@ -397,12 +445,21 @@ class SupabaseGameManager {
             // 1. Get current game state
             const { data: gameState } = await supabase
                 .from('game_states')
-                .select('tokens, current_player_wallet, game_id')
+                .select('tokens, current_player_wallet, game_id, dice')
                 .eq('game_id', gameId)
                 .single();
 
-            if (gameState?.current_player_wallet !== playerWallet) {
+            if (!gameState) {
+                throw new Error('Game not found');
+            }
+
+            if (gameState.current_player_wallet !== playerWallet) {
                 throw new Error('Not your turn');
+            }
+
+            // Verify dice value matches
+            if (!gameState.dice || gameState.dice.length === 0 || gameState.dice[0] !== rolledValue) {
+                throw new Error('Invalid dice value');
             }
 
             // 2. Calculate new token position
@@ -427,24 +484,31 @@ class SupabaseGameManager {
                 ...token,
                 position: newPosition,
                 x: this.calculateXFromPosition(newPosition, token.color),
-                y: this.calculateYFromPosition(newPosition, token.color)
+                y: this.calculateYFromPosition(newPosition, token.color),
+                isClickable: false // Reset clickability after move
             };
 
-            // 5. Check for captures, wins, etc.
+            // 5. Determine if player gets extra turn (rolled a 6)
+            const extraTurn = rolledValue === 6;
+            const nextPlayer = extraTurn ? playerWallet : await this.getNextPlayer(gameId, playerWallet);
+
+            // 6. Check for captures, wins, etc.
             const gameLogic = this.processGameLogic(updatedTokens, playerWallet);
 
-            // 6. Update game state
+            // 7. Update game state - clear dice and change turn if necessary
             await supabase
                 .from('game_states')
                 .update({
                     tokens: updatedTokens,
-                    current_player_wallet: gameLogic.nextPlayer,
+                    dice: [], // Clear dice after move
+                    current_player_wallet: extraTurn ? playerWallet : nextPlayer,
+                    turn_start_time: new Date().toISOString(),
                     winner: gameLogic.winner,
                     game_over: gameLogic.gameOver
                 })
                 .eq('game_id', gameState.game_id);
 
-            // 7. Record the move
+            // 8. Record the move
             await supabase
                 .from('game_moves')
                 .insert({
@@ -455,18 +519,11 @@ class SupabaseGameManager {
                     from_position: token.position,
                     to_position: newPosition,
                     dice_value: rolledValue,
+                    extra_turn: extraTurn,
                     timestamp: new Date().toISOString()
                 });
 
-            // 8. Broadcast updated state
-            await this.broadcastToChannel(gameId, 'gameStateUpdated', {
-                tokens: updatedTokens,
-                dice: [],
-                myTurn: false,
-                gameOver: gameLogic.gameOver,
-                winner: gameLogic.winner,
-                currentPlayerWallet: gameLogic.nextPlayer
-            });
+            console.log(`Move completed: ${tokenId} from ${token.position} to ${newPosition}${extraTurn ? ' (extra turn!)' : ''}`);
 
         } catch (error) {
             console.error('Failed to play roll:', error);
@@ -515,6 +572,134 @@ class SupabaseGameManager {
         }
     };
 
+    // Cancel/stop a game
+    cancelGame = async (gameId: string, playerWallet: string): Promise<void> => {
+        try {
+            // 1. Check if the player is authorized to cancel the game
+            const { data: gameData } = await supabase
+                .from('games')
+                .select('creator_wallet, status')
+                .eq('game_id', gameId)
+                .single();
+
+            if (!gameData) {
+                throw new Error('Game not found');
+            }
+
+            // Only the creator can cancel the game, or any player if game is in progress
+            if (gameData.creator_wallet !== playerWallet && gameData.status === 'waiting') {
+                throw new Error('Only the game creator can cancel a waiting game');
+            }
+
+            // 2. Update game status to cancelled/finished
+            const { error: updateError } = await supabase
+                .from('games')
+                .update({
+                    status: 'finished',
+                    finished_at: new Date().toISOString(),
+                    winner_wallet: null // No winner for cancelled games
+                })
+                .eq('game_id', gameId);
+
+            if (updateError) throw updateError;
+
+            // 3. Update game state to reflect cancellation
+            await supabase
+                .from('game_states')
+                .update({
+                    game_over: true,
+                    winner: null,
+                    current_player_wallet: null
+                })
+                .eq('game_id', gameId);
+
+            // 4. Record the cancellation move
+            await supabase
+                .from('game_moves')
+                .insert({
+                    game_id: gameId,
+                    player_wallet: playerWallet,
+                    move_type: 'game_cancelled',
+                    timestamp: new Date().toISOString()
+                });
+
+            console.log(`Game ${gameId} cancelled by player ${playerWallet}`);
+
+        } catch (error) {
+            console.error('Failed to cancel game:', error);
+            throw error;
+        }
+    };
+
+    // Leave a game (for non-creators)
+    leaveGame = async (gameId: string, playerWallet: string): Promise<void> => {
+        try {
+            // 1. Check if the player is in the game
+            const { data: playerData } = await supabase
+                .from('game_players')
+                .select('*')
+                .eq('game_id', gameId)
+                .eq('player_wallet', playerWallet)
+                .single();
+
+            if (!playerData) {
+                throw new Error('Player not in this game');
+            }
+
+            // 2. Check game status
+            const { data: gameData } = await supabase
+                .from('games')
+                .select('creator_wallet, status')
+                .eq('game_id', gameId)
+                .single();
+
+            if (!gameData) {
+                throw new Error('Game not found');
+            }
+
+            // 3. If player is creator or game only has 1 player, cancel the entire game
+            if (gameData.creator_wallet === playerWallet || gameData.status === 'waiting') {
+                await this.cancelGame(gameId, playerWallet);
+                return;
+            }
+
+            // 4. Otherwise, remove player from game
+            await supabase
+                .from('game_players')
+                .delete()
+                .eq('game_id', gameId)
+                .eq('player_wallet', playerWallet);
+
+            // 5. Update game state if game was in progress
+            if (gameData.status === 'playing') {
+                await supabase
+                    .from('games')
+                    .update({
+                        status: 'finished',
+                        finished_at: new Date().toISOString(),
+                        winner_wallet: null // No winner if someone leaves
+                    })
+                    .eq('game_id', gameId);
+            }
+
+            // 6. Record the leave action
+            await supabase
+                .from('game_moves')
+                .insert({
+                    game_id: gameId,
+                    player_wallet: playerWallet,
+                    move_type: 'player_left',
+                    timestamp: new Date().toISOString()
+                });
+
+            console.log(`Player ${playerWallet} left game ${gameId}`);
+
+        } catch (error) {
+            console.error('Failed to leave game:', error);
+            throw error;
+        }
+    };
+
     // Subscribe to real-time updates
     subscribeToGame = (gameId: string): RealtimeChannel => {
         if (this.channels.has(gameId)) {
@@ -557,6 +742,30 @@ class SupabaseGameManager {
             .on(
                 'postgres_changes',
                 {
+                    event: '*',
+                    schema: 'public',
+                    table: 'game_players',
+                    filter: `game_id=eq.${gameId}`
+                },
+                (payload) => {
+                    this.triggerCallbacks('playerJoined', payload.new);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'games',
+                    filter: `game_id=eq.${gameId}`
+                },
+                (payload) => {
+                    this.triggerCallbacks('gameUpdated', payload.new);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
                     event: 'DELETE',
                     schema: 'public',
                     table: 'game_players'
@@ -589,6 +798,21 @@ class SupabaseGameManager {
     onGameStateUpdated = (cb: (state: any) => void): (() => void) => {
         this.addCallback('gameStateUpdated', cb);
         return () => this.removeCallback('gameStateUpdated', cb);
+    };
+
+    onDiceRolled = (cb: (data: DiceRollData) => void): (() => void) => {
+        this.addCallback('diceRolled', cb);
+        return () => this.removeCallback('diceRolled', cb);
+    };
+
+    onPlayerJoined = (cb: (data: any) => void): (() => void) => {
+        this.addCallback('playerJoined', cb);
+        return () => this.removeCallback('playerJoined', cb);
+    };
+
+    onGameUpdated = (cb: (data: any) => void): (() => void) => {
+        this.addCallback('gameUpdated', cb);
+        return () => this.removeCallback('gameUpdated', cb);
     };
 
     onError = (cb: (err: { message: string }) => void): (() => void) => {
@@ -812,6 +1036,88 @@ class SupabaseGameManager {
     private getHomeBaseY = (color: string, index: number): number => {
         const homePositions = this.getHomePositions(color);
         return homePositions[index] ? homePositions[index].y : 0;
+    };
+
+    private updateTokenClickability = async (tokens: TokenState[], diceValue: number, playerWallet: string, gameId: string): Promise<TokenState[]> => {
+        // Get player colors
+        const { data: playerData } = await supabase
+            .from('game_players')
+            .select('colors')
+            .eq('player_wallet', playerWallet)
+            .eq('game_id', gameId)
+            .single();
+            
+        const playerColors = playerData?.colors || [];
+
+        return tokens.map(token => {
+            // Check if token belongs to current player
+            const belongsToPlayer = playerColors.some((color: string) => 
+                color.toUpperCase() === token.color.toUpperCase()
+            );
+            
+            if (!belongsToPlayer) {
+                return { ...token, isClickable: false };
+            }
+            
+            // Check if token can move based on Ludo rules
+            if (token.position === -1) {
+                // Token is in home - needs a 6 to move out
+                return { ...token, isClickable: diceValue === 6 };
+            } else {
+                // Token is on board - check if it can move forward
+                const newPosition = token.position + diceValue;
+                const canMove = newPosition <= 56; // Don't exceed winning position
+                return { ...token, isClickable: canMove };
+            }
+        });
+    };
+
+    // Get complete game state including players, tokens, and current turn
+    getCompleteGameState = async (gameId: string, playerWallet: string) => {
+        try {
+            // Get game info
+            const { data: gameData } = await supabase
+                .from('games')
+                .select('*')
+                .eq('game_id', gameId)
+                .single();
+
+            if (!gameData) {
+                throw new Error('Game not found');
+            }
+
+            // Get all players
+            const { data: playersData } = await supabase
+                .from('game_players')
+                .select('*')
+                .eq('game_id', gameId)
+                .order('player_index');
+
+            // Get current game state
+            const { data: gameStateData } = await supabase
+                .from('game_states')
+                .select('*')
+                .eq('game_id', gameId)
+                .single();
+
+            // Determine current player info
+            const currentPlayerData = playersData?.find(p => p.player_wallet === playerWallet);
+            const currentPlayerIndex = gameStateData?.current_player_wallet 
+                ? playersData?.findIndex(p => p.player_wallet === gameStateData.current_player_wallet) || 0
+                : 0;
+
+            return {
+                game: gameData,
+                players: playersData || [],
+                gameState: gameStateData,
+                currentPlayer: currentPlayerData,
+                currentPlayerIndex,
+                isMyTurn: gameStateData?.current_player_wallet === playerWallet
+            };
+        } catch (error) {
+            console.error('Error fetching complete game state:', error);
+            throw error;
+        }
     };
 }
 

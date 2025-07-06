@@ -216,9 +216,9 @@ export function GameBoard() {
 
   return (
     <Card className="w-full h-full">
-      <CardContent className="p-6 h-full flex flex-col">
-        <div className="text-center mb-4">
-          <h3 className="text-xl font-bold mb-2">🎲 Ludo Board</h3>
+      <CardContent className="p-2 h-full flex flex-col justify-start">
+        <div className="text-center">
+          <h3 className="text-lg font-bold mb-1">🎲 Ludo Board</h3>
           {isCurrentPlayerTurn && diceValue && (
             <div className="bg-blue-50 border border-blue-200 rounded p-2">
               <p className="text-sm text-blue-800">
@@ -229,8 +229,8 @@ export function GameBoard() {
         </div>
 
         {/* Simple 15x15 grid board */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="inline-block border-2 border-gray-800 bg-white max-w-full max-h-full">
+        <div className="flex-1 flex items-center justify-center min-h-0">
+          <div className="inline-block border-2 border-gray-800 bg-white">
             {boardCells.map((row, y) => (
               <div key={y} className="flex">
                 {row}
@@ -240,7 +240,7 @@ export function GameBoard() {
         </div>
 
         {/* Simple legend */}
-        <div className="mt-4 flex justify-center gap-4 text-xs">
+        <div className="mt-2 flex justify-center gap-4 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-4 h-4 rounded" style={{backgroundColor: COLORS.RED}}></div>
             <span>Red</span>
