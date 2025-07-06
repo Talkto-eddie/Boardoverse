@@ -196,9 +196,11 @@ export default function GamePage() {
   }
 
   return (
-    <div className="container px-4 py-8 md:px-6">
-      <div className="grid gap-6 lg:grid-cols-[1fr_350px]">
-        <GameBoard />
+    <div className="container px-4 py-8 md:px-6 h-screen">
+      <div className="grid gap-6 lg:grid-cols-[1fr_350px] h-full">
+        <div className="min-h-0">
+          <GameBoard />
+        </div>
         <div className="space-y-6">
           <GameInfo />
           <GameControls />

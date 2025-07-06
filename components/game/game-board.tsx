@@ -106,7 +106,10 @@ export function GameBoard() {
       for (let x = 0; x < BOARD_SIZE; x++) {
         const cellType = getCellType(x, y);
         let cellStyle: React.CSSProperties = {};
-        let cellClass = "w-8 h-8 border border-gray-300 flex items-center justify-center text-xs font-bold relative";
+        let cellClass = "aspect-square border border-gray-300 flex items-center justify-center text-xs font-bold relative min-w-6 min-h-6";
+        
+        // Make cells responsive - smaller on mobile, larger on desktop
+        cellClass += " w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10";
 
         // Style based on cell type
         switch (cellType) {
@@ -189,7 +192,7 @@ export function GameBoard() {
                 {tokensHere.map((token, index) => (
                   <div
                     key={token.id}
-                    className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
+                    className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
                     style={{
                       backgroundColor: COLORS[token.color.toUpperCase() as keyof typeof COLORS],
                       transform: tokensHere.length > 1 ? `translate(${(index % 2) * 4 - 2}px, ${Math.floor(index / 2) * 4 - 2}px)` : ''
@@ -212,8 +215,8 @@ export function GameBoard() {
   const boardCells = generateBoard();
 
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardContent className="p-6">
+    <Card className="w-full h-full">
+      <CardContent className="p-6 h-full flex flex-col">
         <div className="text-center mb-4">
           <h3 className="text-xl font-bold mb-2">🎲 Ludo Board</h3>
           {isCurrentPlayerTurn && diceValue && (
@@ -226,12 +229,14 @@ export function GameBoard() {
         </div>
 
         {/* Simple 15x15 grid board */}
-        <div className="inline-block border-2 border-gray-800 bg-white">
-          {boardCells.map((row, y) => (
-            <div key={y} className="flex">
-              {row}
-            </div>
-          ))}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="inline-block border-2 border-gray-800 bg-white max-w-full max-h-full">
+            {boardCells.map((row, y) => (
+              <div key={y} className="flex">
+                {row}
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Simple legend */}
